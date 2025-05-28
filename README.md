@@ -1,5 +1,7 @@
 Title:  Reading and processing geographical raster data in Stata
 
+See readraster-manuscript.pdf for details
+
 Author 1 name: Kerry Du
 Author 1 from:  School of Managemnet, Xiamen University, Xiamen, China
 Author 1 email: kerrydu@xmu.edu.cn
