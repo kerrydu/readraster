@@ -1,7 +1,3 @@
-Package name:  Article tag (Stata Press to add)
-
-DOI:  Digital object identifier (Stata Press to add)
-
 Title:  Reading and processing geographical raster data in Stata
 
 Author 1 name: Kerry Du
