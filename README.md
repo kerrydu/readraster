@@ -1,12 +1,35 @@
-Title:  Reading and processing geographical raster data in Stata
+#  Reading and processing geographical raster data in Stata
 
+## Install the package
 ```
 * install within Stata
 net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
 ```
 
 
-See [manuscript.pdf](https://github.com/kerrydu/readraster/blob/main/readraster-manuscript.pdf) for details
+## Main Commands
+
+### GeoTIFF Processing Commands
+- **`geotools_init`** - Initialize the GeoTools Java library for Stata. Downloads, installs, and configures the GeoTools 32.0 Java library for geospatial data manipulation.
+- **`gtiffread`** - Read data from GeoTIFF files. Extracts pixel values with their corresponding coordinates, supports reading specific bands, subsetting by origin and size, and optional coordinate system conversion.
+- **`gtiffdisp`** - Display metadata from GeoTIFF files including dimensions, bands, spatial characteristics, coordinate systems, and other metadata.
+- **`gzonalstats`** - Compute zonal statistics from raster data based on vector zones. Calculates statistics of pixel values within each polygon zone defined in a shapefile.
+
+### NetCDF Processing Commands
+- **`netcdf_init`** - Initialize the environment for reading NetCDF files using the netcdfAll-5.6.0.java library.
+- **`ncread`** - Read data from NetCDF files. Reads data for a specified variable from a NetCDF file into Stata, can read the entire variable or a specified section.
+- **`ncdisp`** - Display the structure of a NetCDF file and retrieve information about specific variables.
+
+### Coordinate and Geospatial Utilities
+- **`crsconvert`** - Convert coordinates between different coordinate reference systems.
+- **`matchgeop`** - Match datasets based on geographic location. Finds nearest neighbors based on geographic coordinates and generates a linked dataset.
+
+
+* See [manuscript.pdf](https://github.com/kerrydu/readraster/blob/main/readraster-manuscript.pdf) for details
+
+
+
+
 
 Author 1 name: Kerry Du
 Author 1 from:  School of Managemnet, Xiamen University, Xiamen, China
