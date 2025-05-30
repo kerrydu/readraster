@@ -2,7 +2,7 @@ Title:  Reading and processing geographical raster data in Stata
 
 ```
 * install within Stata
-net install readraster, from()
+net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
 ```
 
 
