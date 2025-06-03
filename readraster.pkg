@@ -39,6 +39,7 @@ f ncreadtocsvbysec.ado
 f ncread_core.ado
 f netcdf_init.ado
 f netcdf_init.sthlp
+f readraster.sthlp
 
 
 
@@ -48,4 +49,4 @@ f hunan.prj
 f hunan.shp
 f hunan.shx
 f hunan_city.dta
-f example.do
+f raster_example.do
