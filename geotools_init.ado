@@ -1,4 +1,4 @@
-
+*! version 1.1, 2025-09-21
 program define geotools_init
 version 16.0
 syntax [anything] , [download dir(string) plus(string)]
@@ -9,7 +9,6 @@ if "`download'"!=""{
 		mata: st_numscalar("r(exist)",direxists(`"`dir'"'))
 		local exist = r(exist)
 		if `exist'==0{
-			di as error "Path Setting Failed..."
 			di as error "dir {`dir'} NOT exist"
 			exit 198
 		}
@@ -34,7 +33,7 @@ if "`download'"!=""{
 
 if "`plus'"!=""{
     di "Copying geotools jars to {browse `c(sysdir_plus)'/`plus'} ..."
-	pjar2plus `anything', to(`plus')
+	pjar2plus `anything', to(`plus') jar(gt-main-32.0.jar)
 }
 else{
 	wrtjarpath `anything', jar(gt-main-32.0.jar) adoname(geotoolsjar)
@@ -69,8 +68,8 @@ else{
 if `"`jar'"'!=""{
 	local fileexist = fileexists(`"`anything'/`jar'"')
 	if `fileexist'==0{
-		di as error "Path Setting Failed..."
 		di as error `"`jar' NOT found in {`anything'}"'
+		di as error `"Make sure the specified directory contains all jar files in GeoTools/lib"'
 		exit
 	}
 	
@@ -79,6 +78,12 @@ if `"`jar'"'!=""{
 
 
 local filename =  c(sysdir_plus) + "p/path_`adoname'.ado"
+
+local pdir = c(sysdir_plus) + "p"
+mata: st_numscalar("r(exist)", direxists("`pdir'"))
+if (r(exist)==0) {
+    mkdir "`pdir'"
+}
 file open myfile using `"`filename'"', write text replace
 file write myfile "cap program drop path_`adoname'" _n
 file write myfile "program define path_`adoname', rclass" _n
@@ -102,11 +107,19 @@ end
 cap program drop pjar2plus
 program define pjar2plus
 version 16.0
-syntax anything, [to(string) replace]
+syntax anything, [to(string) replace jar(string)]
 
 removequotes, file(`anything')
 local anything  `r(file)'
 local anything = subinstr(`"`anything'"', "\", "/", .)
+
+
+local fileexist = fileexists(`"`anything'/`jar'"')
+if `fileexist'==0{
+	di as error `"`jar' NOT found in {`anything'}"'
+	di as error `"Make sure the specified directory contains all jar files in GeoTools/lib"'
+	exit
+}
 
 local pluspath = c(sysdir_plus)
 if `"`to'"' == "" {

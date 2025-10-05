@@ -32,25 +32,21 @@ help for {hi:geotools_init}
 {pstd}
 The {cmd:geotools_init} command is used to downloads, installs, and configures the GeoTools 32.0 Java library for use with Stata.
 GeoTools is an open source Java library that provides tools for geospatial data manipulation.
- 
+
+{pstd}
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:crsconvert}, and {cmd:gzonalstats}, you first need to download the GeoTools Version 32.0 Java library. Once downloaded, place this library in Stata’s adopath — or add the library’s file path to Stata’s adopath. 
+
+{pstd}
+Users only need to initialize the Java dependencies upon their first use. And if the files in "geotools-32.0/lib" are moved, the setup process will need to be repeated.
+
 {marker examples}{...}
 {title:Examples}
 
-{phang}
-1. Download and setup GeoTools in the current directory:
+{pstd}To configure the environment automatically, simply run the following line:{p_end}
+{phang2}{cmd:. geotools_init, download plus(geotools)}{p_end}
 
-{p 12 16 2}
-{cmd:.geotools_init, download}{break}
-
-{phang}
-2. manually download the GeoTools package from https://sourceforge.net/projects/geotools/files/GeoTools%2032%20Releases/32.0/ and set up the Java dependence:
-
-{p 12 16 2}
-{cmd:.geotools_init "C:/Users/17286/Documents/geotools-32.0/lib/"}{break}
-
-
-{hline}
-
+{pstd}Note that this process may take dozens of minutes—Stata’s speed for copying large files from the internet is relatively slow. As a faster alternative, we recommend manually downloading the GeoTools 32.0 package from Sourceforge (https://sourceforge.net/projects/geotools/files/GeoTools\%2032\%20Releases/32.0/) and unzipping the downloaded file. After doing so, initialize the environment by running teh following command. And you should replace "C:/Users/17286/Documents/geotools-32.0/lib/" with the actual file path to your unzipped GeoTools 32.0 lib folder.{p_end}
+{phang2}{cmd:. geotools_init "C:/Users/17286/Documents/geotools-32.0/lib/", plus(geotools)}{p_end}
 
 {title:Authors}
 {pstd}Kerry Du{p_end}
@@ -61,10 +57,6 @@ GeoTools is an open source Java library that provides tools for geospatial data 
 {pstd}School of Managemnet, Xiamen University, China{p_end}
 {pstd}Email: 35720241151353@stu.xmu.edu.cn
 
-{pstd}Shuo Hu{p_end}
-{pstd}School of Economics, Southwestern University of Finance and Economics, China{p_end}
-{pstd}advancehs@163.com{p_end}
-
 {pstd}Yang Song{p_end}
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: ss0706082021@163.com
@@ -72,4 +64,12 @@ GeoTools is an open source Java library that provides tools for geospatial data 
 {pstd}Ruipeng Tan{p_end}
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn
+
+{title:Also see}
+
+{psee}
+Online:  {help gtiffdisp}, {help gtiffread}, {help gzonalstats}, {help crsconvert}
+{p_end}
+
+
 

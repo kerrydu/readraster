@@ -86,7 +86,7 @@
 Match datasets using nearest neighbors within 10 km:
 
 {p 12 16 2}
-{cmd:. ncread tas using "Hunan.nc", clear}{break}
+{cmd:. ncread tas using "hunan.nc", clear}{break}
 
 {p 12 16 2}
 {cmd:. gen n=_n}{break}
@@ -104,7 +104,7 @@ Match datasets using nearest neighbors within 10 km:
 Match datasets using 5 nearest neighbors within 5 miles:
 
 {p 12 16 2}
-{cmd:. ncread tas using "Hunan.nc", clear}{break}
+{cmd:. ncread tas using "hunan.nc", clear}{break}
 
 {p 12 16 2}
 {cmd:. gen n=_n}{break}
@@ -122,7 +122,7 @@ Match datasets using 5 nearest neighbors within 5 miles:
 Process the dataset in 5 parts:
 
 {p 12 16 2}
-{cmd:. ncread tas using "Hunan.nc", clear}{break}
+{cmd:. ncread tas using "hunan.nc", clear}{break}
 
 {p 12 16 2}
 {cmd:. gen n=_n}{break}
@@ -138,6 +138,7 @@ Process the dataset in 5 parts:
 
 {hline}
 
+
 {title:Author}
 
 {pstd}Kerry Du{p_end}
@@ -148,10 +149,6 @@ Process the dataset in 5 parts:
 {pstd}School of Managemnet, Xiamen University, China{p_end}
 {pstd}Email: 35720241151353@stu.xmu.edu.cn
 
-{pstd}Shuo Hu{p_end}
-{pstd}School of Economics, Southwestern University of Finance and Economics, China{p_end}
-{pstd}advancehs@163.com{p_end}
-
 {pstd}Yang Song{p_end}
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: ss0706082021@163.com
@@ -160,8 +157,3 @@ Process the dataset in 5 parts:
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn
 
-{title:Also see}
-
-{psee}
-Online:  {manhelp merge R}, {manhelp geonear R}
-{p_end}

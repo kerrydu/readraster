@@ -1,4 +1,4 @@
-
+*! version 2.0.1 2025-10-05
 cap program drop crsconvert
 program define crsconvert
 version 18
@@ -10,7 +10,7 @@ end
 
 program define checkdependencies
 
-version 18 
+version 18
 
 cap findfile gt-main-32.0.jar
 if _rc==0 cap findfile gt-referencing-32.0.jar
@@ -20,7 +20,8 @@ if _rc==0 cap findfile gt-epsg-extension-32.0.jar
 if _rc{
     cap findfile path_geotoolsjar.ado 
     if _rc {
-        di as error "jar path NOT specified, help geotools_init for setting up"
+        di as error "Missing Java dependencies"
+        disp "see " `"{view "geotools_init.sthlp":help geotools_init}"'  
         exit
         
     }
@@ -33,9 +34,9 @@ if _rc{
 	
 	    cap findfile `jar', path(`"`path'"')
 	    if _rc {
-        di as error "`jar' NOT found"
-        di as error "use geotools_init for re-initializing Java environment"
+        di as error "Missing Java dependencies, `jar' NOT found"
         di as error "make sure `jar' exists in your specified directory"
+		disp "see " `"{view "geotools_init.sthlp":help geotools_init}"' " for setting up"
         exit
       }
 	

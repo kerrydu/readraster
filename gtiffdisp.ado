@@ -1,5 +1,4 @@
-
-
+*! version 2.0.1 2025-10-05
 cap program drop gtiffdisp
 program define gtiffdisp,rclass
 version 18.0
@@ -40,16 +39,23 @@ foreach jar in `jars'{
 }
 
 if `rc'{
-	path_geotoolsjar
+    capture which path_geotoolsjar
+    if _rc {
+        di as error "Missing Java dependencies"
+        disp "see " `"{view "geotools_init.sthlp":help geotools_init}"'
+        exit 198
+    }
+
+    path_geotoolsjar
     local path `r(path)'
 
 	foreach jar in `jars' {
 	
 	    cap findfile `jar', path(`"`path'"')
 	    if _rc {
-        di as error "`jar' NOT found"
-        di as error "use geotools_init for re-initializing Java environment,help geotools_init"
+        di as error "Missing Java dependencies, `jar' NOT found"
         di as error "make sure `jar' exists in your specified directory"
+		disp "see " `"{view "geotools_init.sthlp":help geotools_init}"' " for setting up"
         exit
       }
 	

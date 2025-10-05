@@ -86,10 +86,6 @@ Display the Metadata of a GeoTIFF File:
 {pstd}School of Managemnet, Xiamen University, China{p_end}
 {pstd}Email: 35720241151353@stu.xmu.edu.cn
 
-{pstd}Shuo Hu{p_end}
-{pstd}School of Economics, Southwestern University of Finance and Economics, China{p_end}
-{pstd}advancehs@163.com{p_end}
-
 {pstd}Yang Song{p_end}
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: ss0706082021@163.com
@@ -98,5 +94,10 @@ Display the Metadata of a GeoTIFF File:
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn
 
+{title:Also see}
+
+{psee}
+Online:  {help geotools_init}, {help gtiffread}
+{p_end}
 
 

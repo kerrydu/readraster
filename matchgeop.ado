@@ -6,7 +6,7 @@ if _rc{
 }
 
 program define matchgeop
-version 17
+version 18
 
 syntax varlist(min=3 max=3) using/, Neighbors(string) [Within(numlist >0 min=1 max=1) USERange(string) MILE NEARcount(numlist) gen(name) nsplit(numlist >0 min=1 max=1) UFrame BEARing(name)]
 

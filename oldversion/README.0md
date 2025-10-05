@@ -1,0 +1,58 @@
+#  Reading and processing geographical raster data in Stata
+
+## Install the package
+```
+* install within Stata
+net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
+```
+
+
+## Main Commands
+
+### GeoTIFF Processing Commands
+- **`geotools_init`** - Initialize the GeoTools Java library for Stata. Downloads, installs, and configures the GeoTools 32.0 Java library for geospatial data manipulation.
+- **`gtiffread`** - Read data from GeoTIFF files. Extracts pixel values with their corresponding coordinates, supports reading specific bands, subsetting by origin and size, and optional coordinate system conversion.
+- **`gtiffdisp`** - Display metadata from GeoTIFF files including dimensions, bands, spatial characteristics, coordinate systems, and other metadata.
+- **`gzonalstats`** - Compute zonal statistics from raster data based on vector zones. Calculates statistics of pixel values within each polygon zone defined in a shapefile.
+
+### NetCDF Processing Commands
+- **`netcdf_init`** - Initialize the environment for reading NetCDF files using the netcdfAll-5.6.0.java library.
+- **`ncread`** - Read data from NetCDF files. Reads data for a specified variable from a NetCDF file into Stata, can read the entire variable or a specified section.
+- **`ncdisp`** - Display the structure of a NetCDF file and retrieve information about specific variables.
+
+### Coordinate and Geospatial Utilities
+- **`crsconvert`** - Convert coordinates between different coordinate reference systems.
+- **`matchgeop`** - Match datasets based on geographic location. Finds nearest neighbors based on geographic coordinates and generates a linked dataset.
+
+
+* See [manuscript.pdf](https://github.com/kerrydu/readraster/blob/main/readraster-manuscript.pdf) for details
+
+
+
+
+
+Author 1 name: Kerry Du
+Author 1 from:  School of Managemnet, Xiamen University, Xiamen, China
+Author 1 email: kerrydu@xmu.edu.cn
+
+Author 2 name: Chunxia Chen
+Author 2 from:  School of Managemnet, Xiamen University, Xiamen, China
+Author 2 email: chenchunxia@stu.xmu.edu.cn
+
+Author 3 name: Shuo Hu
+Author 3 from: School of Economics, Southwestern University of Finance and Economics, China
+Author 3 email: advancehs@163.com
+
+Author 4 name: Yang Song
+Author 4 from:  School of Economics, Hefei University of Technology, Hefei, China
+Author 4 email: ss0706082021@163.com
+
+Author 5 name: Ruipeng Tan
+Author 5 from:  School of Economics, Hefei University of Technology, Hefei, China
+Author 5 email: tanruipeng@hfut.edu.cn
+
+Help keywords:  GeoTIFF, NetCDF, Java, Raster, Geospatial
+
+File list: geotools_init.ado geotools_init.sthlp  gtiffdisp.ado gtiffdisp.sthlp gtiffdisp_core.ado gtiffread.ado gtiffread_core.ado gtiffread.sthlp gzonalstats.ado gzonalstats.sthlp gzonalstats_core.ado crsconvert.ado crsconvert.sthlp crsconvert_core.ado ncread.ado ncread_core.ado ncread.sthlp ncreadbysec.ado ncreadtocsv.ado ncreadtocsvbysec.ado ncdisp.ado ncdisp.sthlp ncdisp_core.ado ncinfo.ado matchgeop.ado matchgeop.sthlp netcdf_init.ado netcdf_init.sthlp DMSP-like2020.tif geotools-32.0 hunan.dbf hunan.shp hunan.shx hunan.prj hunan_city.dta example.do
+
+Notes: Given the large size of the GeoTools package, the download process can be time-consuming. To save time, we recommend that users manually download the GeoTools package from Sourceforge {https://sourceforge.net/projects/geotools/files/GeoTools\%2032\%20Releases/32.0/}. Then, use the \stcmd{geotools\_init} command to specify the path to "geotools-32.0/lib".The developed commands can directly read nc files on the network. However, due to reasons such as network SSL authentication, the reading may fail. If this happens, you can copy the nc file to the local device and then perform the following corresponding operations.

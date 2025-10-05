@@ -33,12 +33,6 @@
 {pstd}
 The {cmd:ncread} command is used to read data for a specified variable from a NetCDF file into Stata. It can read the entire variable or a specified section of data. If varname is not specified, ncread displays the meta information of the NetCDF file.
 
-{marker Dependencies}{...}
-{title:Dependencies}
-
-{pstd}
-The {cmd:ncread} command requires the NetCDF Java library. Use ncread_init for setting up.
-
 
 {marker options}{...}
 {title:Options}
@@ -60,16 +54,16 @@ The {cmd:ncread} command requires the NetCDF Java library. Use ncread_init for s
 {title:Examples}
 
 {pstd}Display the meta information of the NetCDF file:{p_end}
-{phang2}{cmd:. ncread using "Hunan.nc"}{p_end}
+{phang2}{cmd:. ncread using "hunan.nc"}{p_end}
 
 {pstd}Read the entire variable:{p_end}
-{phang2}{cmd:. ncread tas using "Hunan.nc"}{p_end}
+{phang2}{cmd:. ncread tas using "hunan.nc"}{p_end}
 
 {pstd}Read a specified section:{p_end}
-{phang2}{cmd:. ncread tas using "Hunan.nc", origin(1 1 1) size(10 20 30)}{p_end}
+{phang2}{cmd:. ncread tas using "hunan.nc", origin(1 1 1) size(10 20 30)}{p_end}
 
 {pstd}Read a the first day section:{p_end}
-{phang2}{cmd:. ncread tas using "Hunan.nc", origin(1 1 1) size(1 -1 -1)}{p_end}
+{phang2}{cmd:. ncread tas using "hunan.nc", origin(1 1 1) size(1 -1 -1)}{p_end}
 
 {title:Author}
 

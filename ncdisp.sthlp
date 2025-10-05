@@ -23,11 +23,6 @@ To view metadata for a specific variable in a NetCDF file:
 {cmd:ncdisp} is used to display the information about 
 a specific variable in a nc file. It reads the file path provided as an argument.
 
-{title:Dependencies}
-
-{pstd}
-The {cmd:ncdisp} command requires the NetCDF Java library. Use ncread_init for setting up.
-
 
 {title:Options}
 
@@ -61,10 +56,10 @@ local
 {title:Examples}
 
 {pstd}Display the meta information of the entrie NetCDF file:{p_end}
-{phang2}{cmd:. ncdisp using "Hunan.nc"}{p_end}
+{phang2}{cmd:. ncdisp using "hunan.nc"}{p_end}
 
 {pstd}Display the meta information of the variable:{p_end}
-{phang2}{cmd:. ncdisp tas using "Hunan.nc"}{p_end}
+{phang2}{cmd:. ncdisp tas using "hunan.nc"}{p_end}
 
 {title:Author}
 

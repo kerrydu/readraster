@@ -18,12 +18,12 @@ qui gen double `gen'`y' = .
 local from `from'
 local to `to'
 
-// 检查 from 是否是文件路径
 if strpos(lower("`from'"), ".tif") | strpos(lower("`from'"), ".shp") {
     removequotes, file(`from')
     local from `r(file)'
     local from = subinstr("`from'", "\", "/", .)
-    if !strmatch("`from'", "*:\\*") & !strmatch("`from'", "/*") {
+     // 只对相对路径拼接 c(pwd)
+     if !regexm("`from'", "^[A-Za-z]:/") & !strmatch("`from'", "/*") {
         local from = "`c(pwd)'/`from'"
     }
     local from = subinstr("`from'", "\", "/", .)
@@ -34,7 +34,7 @@ if strpos(lower("`to'"), ".tif") | strpos(lower("`to'"), ".shp") {
     removequotes, file(`to')
     local to `r(file)'
     local to = subinstr("`to'", "\", "/", .)
-    if !strmatch("`to'", "*:\\*") & !strmatch("`to'", "/*") {
+     if !regexm("`to'", "^[A-Za-z]:/") & !strmatch("`to'", "/*") {
         local to = "`c(pwd)'/`to'"
     }
     local to = subinstr("`to'", "\", "/", .)

@@ -1,7 +1,7 @@
 v 3
 d readraster: Reading and processing geographical raster data in Stata
 d
-d Distribution-Date: 20250530
+d Distribution-Date: 20251005
 d
 d Author: Kerry Du, School of Management, Xiamen University
 d Author: Chunxia Chen, School of Management, Xiamen University  
@@ -29,18 +29,9 @@ f matchgeop.ado
 f matchgeop.sthlp
 f ncdisp.ado
 f ncdisp.sthlp
-f ncdisp_core.ado
-f ncinfo.ado
 f ncread.ado
 f ncread.sthlp
-f ncreadbysec.ado
-f ncreadtocsv.ado
-f ncreadtocsvbysec.ado
-f ncread_core.ado
-f netcdf_init.ado
-f netcdf_init.sthlp
 f readraster.sthlp
-
 
 
 f DMSP-like2020.tif
@@ -49,4 +40,4 @@ f hunan.prj
 f hunan.shp
 f hunan.shx
 f hunan_city.dta
-f readraster_example.do
+

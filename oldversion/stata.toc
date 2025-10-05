@@ -1,0 +1,6 @@
+v 3
+d ReadRaster package 
+d Kerry Du, Xiamen University
+d kerrydu@xmu.edu.cn
+d
+p readraster Reading and processing geographical raster data in Stata

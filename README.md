@@ -37,7 +37,7 @@ net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraste
 
 1. **Environment Configuration Commands**
    - `geotools_init`: Configure GeoTools Java dependencies
-   - `netcdf_init`: Configure NetCDF Java dependencies
+   - ~~`netcdf_init`: Configure NetCDF Java dependencies~~
 
 2. **Data Exploration Commands**
    - `gtiffdisp`: Display GeoTIFF file metadata
@@ -80,11 +80,10 @@ geotools_init "C:/geotools-32.0/lib/"
 geotools_init, download
 ```
 
-**NetCDF Dependency Configuration**:
+~~**NetCDF Dependency Configuration**:~~
 
 ```stata
-// Initialize NetCDF environment (automatic download)
-netcdf_init, download plus(jar)
+
 ```
 
 #### Data Exploration Examples
@@ -331,7 +330,7 @@ net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraste
 
 1. **环境配置命令**
    - `geotools_init`：配置GeoTools Java依赖
-   - `netcdf_init`：配置NetCDF Java依赖
+   - ~~`netcdf_init`：配置NetCDF Java依赖~~
 
 2. **数据探索命令**
    - `gtiffdisp`：显示GeoTIFF文件元信息
@@ -374,11 +373,10 @@ geotools_init "C:/geotools-32.0/lib/"
 geotools_init, download
 ```
 
-**NetCDF依赖配置**：
+~~**NetCDF依赖配置**：~~
 
 ```stata
-// 初始化NetCDF环境（自动下载）
-netcdf_init, download plus(jar)
+
 ```
 
 #### 数据探索示例
@@ -591,4 +589,4 @@ gtiffread elevation.tif, clear
 **关键词**：#Stata #地理空间数据 #GeoTIFF #NetCDF #数据分析 #学术研究
 
 ---
-*发布日期：2025年5月30日*
+*发布日期：2025年10月5日*

@@ -45,7 +45,7 @@ automatically handling coordinate system transformations and spatial operations.
 {dlgtab:System Requirements}
 
 {phang}
-{bf:Stata Version}: Stata 18 or later version is required
+{bf:Stata Version}: Stata 17 or later version is required
 {p_end}
 
 
@@ -85,30 +85,36 @@ The {cmd:readraster} package includes the following commands organized by functi
 {dlgtab:Setup Commands}
 
 {phang2}
-{help geotools_init:geotools_init} - Initialize GeoTools Java library for GeoTIFF operations
+{help geotools_init:geotools_init} - Configurate GeoTools Java library for GeoTIFF operations
 
-{phang2}
-{help netcdf_init:netcdf_init} - Initialize NetCDF Java library for NetCDF operations
 
 
 {marker setup}{...}
 {title:Setup Java dependencies}
 
-{pstd}
-Before using the package commands, you must initialize the required Java libraries:
-
-{phang}
-{bf:For GeoTIFF operations} (gtiffread, gtiffdisp, gzonalstats, crsconvert):
-{p_end}
-{phang2}{cmd:. geotools_init, download}{p_end}
-
-{phang}
-{bf:For NetCDF operations} (ncread, ncdisp):
-{p_end}
-{phang2}{cmd:. netcdf_init, download}{p_end}
 
 {pstd}
-These setup commands only need to be run once per Stata installation.
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
+Once downloaded, place this library in Stata’s adopath—or add the library’s file path to Stata’s adopath.
+
+{pstd}
+For a simplified setup, we provide a dedicated command: {cmd:geotools_init}.
+To configure the environment automatically, simply run the following line in Stata:
+{p_end}
+
+{phang2}{cmd:. geotools_init, download plus(geotools)}{p_end}
+
+{pstd}
+Note that this process may take dozens of minutes—Stata’s speed for copying large files from the internet is relatively slow.
+
+{pstd}
+As a faster alternative, we recommend manually downloading the GeoTools library from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip"} and unzipping the downloaded file. After doing so, initialize the environment by running:
+{p_end}
+
+{phang2}{cmd:. geotools_init} {it:path_to_geotools-32.0/lib}{cmd:, plus(geotools)}{p_end}
+
+{pstd}
+Note that you should replace {it:path_to_geotools-32.0/lib} with the actual file path to your unzipped GeoTools 32.0 lib folder.
 
 
 {marker examples}{...}
