@@ -67,6 +67,14 @@ Installing the latest developed version from Github:
 {phang2}{cmd:. net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)}{p_end}
 
 
+{phang}
+Downloading demo code and data from Github:
+{p_end}
+
+{phang2}{cmd:. net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)}{p_end}
+
+
+
 {marker commands}{...}
 {title:Available Commands}
 
