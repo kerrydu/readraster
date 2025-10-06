@@ -51,14 +51,16 @@ automatically handling coordinate system transformations and spatial operations.
 
 {marker installization}{...}
 {title:Installization}
-{pstd}
+
+
+{phang}
 Installing the package from SSC:
 {p_end}
 
 {phang2}{cmd:. ssc install readraster}{p_end}
 
 
-{pstd}
+{phang}
 Installing the latest developed version from Github:
 {p_end}
 
