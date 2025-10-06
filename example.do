@@ -25,8 +25,24 @@ cap which geoplot
 if _rc {
    ssc install geoplot, replace
 }
+cap which moremata
+if _rc {
+    ssc install moremata, replace
+}
+cap which heatplot
+if _rc {
+    ssc install heatplot, replace
+}
+cap which palettes
+if _rc {
+    ssc install palettes, replace
+}
+cap which colrspace
+if _rc {
+    ssc install colrspace, replace
+}
 
-
+**********************************************************
 
 capture log close
 log using example.log, replace
@@ -90,10 +106,6 @@ gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') size(`n_rows' `n_co
 
 save DMSP-like2020.dta,replace
 
-//heatplot
-ssc install heatplot, replace
-ssc install palettes, replace
-ssc install colrspace, replace
 
 set scheme sj, permanently
 use DMSP-like2020.dta, clear
@@ -136,9 +148,6 @@ gzonalstats DMSP-like2020.tif using hunan.shp, stats("sum avg") clear
 list z_Name avg sum
 save "hunan_light.dta", replace
 
-//presents TNLI and ANLI in hunan
-ssc install geoplot, replace
-ssc install moremata, replace
 
 use hunan.dta, clear
 
