@@ -45,8 +45,24 @@ automatically handling coordinate system transformations and spatial operations.
 {dlgtab:System Requirements}
 
 {phang}
-{bf:Stata Version}: Stata 17 or later version is required
+{bf:Stata Version}: Stata 18 or later version is required
 {p_end}
+
+
+{marker installization}{...}
+{title:Installization}
+{pstd}
+Installing the package from SSC:
+{p_end}
+
+{phang2}{cmd:. ssc install readraster}{p_end}
+
+
+{pstd}
+Installing the latest developed version from Github:
+{p_end}
+
+{phang2}{cmd:. net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)}{p_end}
 
 
 {marker commands}{...}
