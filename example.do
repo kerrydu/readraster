@@ -1,8 +1,25 @@
-cd .\readraster
+* 2025-10-06
+********Example of Using readraster Package************
+cap findfile readraster.sthlp
+    if _rc {
+    display "change the working directory to the folder where readraster package is located"
+    exit
+    }
 
+cap findfile DMSP-like2020.tif
+if _rc {
+   display "change the working directory to the folder where readraster package is located"
+   exit
+}
 ************Set up for Readraster************
 
-do setup.do 
+cap findfile gt-main-32.0.jar
+if _rc {
+   display "using setup.do to install Java dependencies"
+   display "downloading the Java dependencies requires dozen minutes and might fail due to network issues"
+   display `"if it fails, please try again, or download the Java dependencies manually as instructed in georools_init (see {view "geotools_init.sthlp":help geotools_init})"'
+   do setup.do
+}
 
 cap which geoplot
 if _rc {
