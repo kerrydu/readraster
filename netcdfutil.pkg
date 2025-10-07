@@ -1,5 +1,6 @@
 v 3
-d readraster: Reading and processing geographical raster data in Stata
+d netcdfutil: a standalone Jar file for NetCDFUtils in Readraster package
+d
 d
 d Distribution-Date: 20251005
 d

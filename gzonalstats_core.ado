@@ -1,4 +1,3 @@
-
 cap program drop gzonalstats_core
 program define gzonalstats_core
 version 18.0
@@ -426,13 +425,15 @@ public class zonalstatics {
                 SimpleFeature firstFeature = allFeatures.get(0);
                 for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
                     String attributeName = firstFeature.getType().getDescriptor(i).getLocalName();
+                    /* System.out.println("Feature attribute: " + attributeName); */
+                    
                     Object value = firstFeature.getAttribute(attributeName);
                     
                     if (attributeName.equals("count")) {
                         if (showCount) {  // Only store if requested
                             countAttrName = attributeName;
                         }
-                    } else if (attributeName.equals("mean")) {
+                    } else if (attributeName.equals("avg")) {
                         if (showAvg) {  // Only store if requested
                             avgAttrName = attributeName;
                         }
