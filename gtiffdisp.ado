@@ -1,7 +1,7 @@
 *! version 2.0.1 2025-10-05
 cap program drop gtiffdisp
 program define gtiffdisp,rclass
-version 18.0
+version 17
 
 checkdependencies
 gtiffdisp_core `0'
@@ -25,7 +25,7 @@ end
 
 program define checkdependencies
 
-version 18 
+version 17 
 
 local jars gt-main-32.0.jar gt-referencing-32.0.jar gt-epsg-hsql-32.0.jar gt-process-raster-32.0.jar
 local jars `jars' gt-epsg-extension-32.0.jar gt-geotiff-32.0.jar gt-coverage-32.0.jar

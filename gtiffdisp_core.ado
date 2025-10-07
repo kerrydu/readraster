@@ -1,7 +1,7 @@
 
 cap program drop gtiffdisp_core
 program define gtiffdisp_core,rclass
-version 18.0
+version 17
 
 syntax anything,[*]
 

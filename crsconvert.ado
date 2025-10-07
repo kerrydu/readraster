@@ -1,7 +1,7 @@
 *! version 2.0.1 2025-10-05
 cap program drop crsconvert
 program define crsconvert
-version 18
+version 17
 
 checkdependencies
 crsconvert_core `0'
@@ -10,7 +10,7 @@ end
 
 program define checkdependencies
 
-version 18
+version 17
 
 cap findfile gt-main-32.0.jar
 if _rc==0 cap findfile gt-referencing-32.0.jar

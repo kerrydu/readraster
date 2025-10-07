@@ -1,7 +1,7 @@
 
 cap program drop gtiffread_core
 program define gtiffread_core
-version 18.0
+version 17
 syntax anything, [CRScode(string) band(real 1) origin(numlist min=2 max=2 integer >0) size(numlist min=2 max=2 integer)  clear]
 greadvalue `0'
     
@@ -11,7 +11,7 @@ end
 
 cap program drop greadvalue
 program define greadvalue
-version 18.0
+version 17
 syntax anything, [CRScode(string) band(real 1) origin(numlist min=2 max=2 integer >0) size(numlist min=2 max=2 integer) clear]
 
 // 参数处理逻辑

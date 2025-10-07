@@ -1,7 +1,7 @@
 
 cap program drop crsconvert_core
 program define crsconvert_core
-version 18
+version 17
 
 syntax varlist(min=2 max=2 numeric), gen(string) from(string) to(string)
 

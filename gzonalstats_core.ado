@@ -1,6 +1,6 @@
 cap program drop gzonalstats_core
 program define gzonalstats_core
-version 18.0
+version 17
 syntax anything using/, [STATs(string) band(integer 1) clear]
 
 // Check if clear option is provided when data is in memory

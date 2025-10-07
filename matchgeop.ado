@@ -1,13 +1,12 @@
 
 cap program drop matchgeop
+
+program define matchgeop
+version 17
 cap which distinct
 if _rc{
     ssc install distinct 
 }
-
-program define matchgeop
-version 18
-
 syntax varlist(min=3 max=3) using/, Neighbors(string) [Within(numlist >0 min=1 max=1) USERange(string) MILE NEARcount(numlist) gen(name) nsplit(numlist >0 min=1 max=1) UFrame BEARing(name)]
 
 if "`mile'"!=""{

@@ -1,7 +1,7 @@
 *! version 2.0.1 2025-10-05
 cap program drop gzonalstats
 program define gzonalstats
-version 18.0
+version 17
 
 checkdependencies
 gzonalstats_core `0'
@@ -12,7 +12,7 @@ end
 
 program define checkdependencies
 
-version 18 
+version 17 
 
 // List of all required JARs, including core GeoTools libraries and external dependencies
 local jars gt-main-32.0.jar gt-referencing-32.0.jar gt-epsg-hsql-32.0.jar gt-process-raster-32.0.jar
