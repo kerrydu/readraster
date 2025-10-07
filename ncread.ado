@@ -1,28 +1,57 @@
-*! version 2.0.1 2025-10-05
+*! version 3.0.1 2025-10-07
 cap program drop ncread 
 program define ncread 
-version 18
+version 17
 
 syntax [anything] using/,  [Size(numlist integer) Origin(numlist integer >0) CLEAR CSV(string) display]
 
 
-    cap findfile NetCDFUtils-complete.jar
-    if _rc {
-        display as "installing the jar file, please wait..."
-         cap net install netcdfutil.pkg, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
-         if _rc {
-            cap cnssc install netcdfutil.pkg
-         }
-         sleep 1000
+    // cap findfile NetCDFUtils-complete.jar
+    // if _rc {
+    //     display as "installing the jar file, please wait..."
+    //      cap net install netcdfutil.pkg, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
+    //      if _rc {
+    //         cap cnssc install netcdfutil.pkg
+    //      }
+    //      sleep 1000
 
-    }
-    cap findfile NetCDFUtils-complete.jar
+    // }
+    // cap findfile NetCDFUtils-complete.jar
+    // if _rc {
+    //     di as error "downloading NetCDFUtils-complete.jar failed"
+    //     di `"please go to {browse "https://github.com/kerrydu/readraster": Github/kerrydu/readraster} to download it and put it in your adopath"'
+    //     exit
+    // }
+    // local jarfiles `r(filename)'
+
+
+
+cap findfile netcdfAll-5.9.1.jar
+
+if _rc{
+    cap findfile path_ncreadjar.ado 
     if _rc {
-        di as error "downloading NetCDFUtils-complete.jar failed"
-        di `"please go to {browse "https://github.com/kerrydu/readraster": Github/kerrydu/readraster} to download it and put it in your adopath"'
+        di as error "jar path NOT specified, use netcdf_init for setting up"
+        disp "see " `"{view "netcdf_init.sthlp":help netcdf_init}"'
+        exit
+        
+    }
+
+    path_ncreadjar
+    local path `r(path)'
+
+    cap findfile netcdfAll-5.9.1.jar, path(`"`path'"')
+    if _rc {
+        di as error "Missing Java dependencies, netcdfAll-5.9.1.jar NOT found"
+        di as error "make sure netcdfAll-5.9.1.jar exists in your specified directory"
+		disp "see " `"{view "netcdf_init.sthlp":help netcdf_init}"' " for setting up"
         exit
     }
-    local jarfiles `r(filename)'
+
+    qui adopath ++ `"`path'"'
+
+}
+
 
 removequotes,file(`"`using'"')
 local file `r(file)'
@@ -74,7 +103,8 @@ local varname `r(file)'
 confirm new var `varname'
 
 // 使用javacall调用NetCDFUtils
-javacall NetCDFUtils readToStataEntry, jars(NetCDFUtils-complete.jar) args("`file'" "`varname'")
+// javacall NetCDFUtils readToStataEntry, jars(NetCDFUtils-complete.jar) args("`file'" "`varname'")
+netcdfutils NetCDFUtils.readToStata("`file'", "`varname'")
 
 if `=_N'>0 {
     disp "Sucessfully import `=_N' Obs into Stata."
@@ -93,27 +123,21 @@ end
 /////////////////////////////////////////////////
 cap program drop ncinfo
 program define ncinfo
-    version 18
+    version 17
     syntax anything,[display]
-
-    cap findfile NetCDFUtils-complete.jar, path(`"`path'"')
-    if _rc {
-        di as error "NetCDFUtils-complete.jar NOT found"
-        di as error "make sure NetCDFUtils-complete.jar exists in your adopath"
-        exit
-    }
 
     removequotes,file(`"`anything'"')
     local file `r(file)'
     local file = subinstr(`"`file'"',"\","/",.)
     
-    // 使用javacall调用新的JAR文件
-    javacall NetCDFUtils printNetCDFStructureEntry, jars(NetCDFUtils-complete.jar) args("`file'")
+    // // 使用javacall调用新的JAR文件
+    // javacall NetCDFUtils printNetCDFStructureEntry, jars(NetCDFUtils-complete.jar) args("`file'")
+    netcdfutils NetCDFUtils.printNetCDFStructure("`file'")
 
 end
 
 program define ncreadbysec 
-version 18
+version 17
 syntax anything using/,  [Size(numlist integer) clear ] Origin(numlist integer >0)
 
 removequotes,file(`anything')
@@ -145,7 +169,9 @@ if `nc' != `no' {
 
 ////////////import java////////////
 // 使用javacall调用NetCDFUtils
-javacall NetCDFUtils readToStataBySectionEntry, jars(NetCDFUtils-complete.jar) args("`file'" "`varname'" "`origin0'" "`size'")
+// javacall NetCDFUtils readToStataBySectionEntry, jars(NetCDFUtils-complete.jar) args("`file'" "`varname'" "`origin0'" "`size'")
+
+netcdfutils NetCDFUtils.readToStataBySection("`file'", "`varname'", "`origin0'", "`size'")
 
 local dimensions `dimensions'
 local coordAxes `coordAxes'
@@ -162,7 +188,7 @@ if `=_N'>0 {
 
 ///////////////////////////////////////////
 program define ncreadtocsv
-version 18
+version 17
 syntax anything using/,  csv(string) [Size(numlist integer) Origin(numlist integer >0) clear ]
 local varname `anything'
 confirm name `varname'
@@ -196,7 +222,8 @@ local csvfile = usubinstr(`"`csvfile'"',"\","/",.)
 cap qui findfile NCtoCSV.java
 di 
 //////////javacall//////////////////////
-javacall NetCDFUtils exportToCSVEntry, jar(`NetCDFUtils-complete.jar') args(`"`ncfile'"' `"`csvfile'"' `"`varname'"')
+// javacall NetCDFUtils exportToCSVEntry, jar(`NetCDFUtils-complete.jar') args(`"`ncfile'"' `"`csvfile'"' `"`varname'"')
+netcdfutils NetCDFUtils.exportToCSV("`ncfile'", "`csvfile'", "`varname'")
 
 
 end
@@ -205,7 +232,7 @@ end
 /////////////////////////////////////////
 
 program define ncreadtocsvbysec
-version 18
+version 17
 syntax anything using/,  csv(string) [Size(numlist integer) Origin(numlist integer >0)]
 
 local varname `anything'
@@ -239,7 +266,8 @@ forv i=1/`no'{
 
 // No need for any other validation - Java will handle it all
 di
-javacall NetCDFUtils exportToCSVBySectionEntry, jar(`NetCDFUtils-complete.jar') args(`"`ncfile'"' `"`csvfile'"' `"`varname'"' `"`origin0'"' `"`size'"')
+// javacall NetCDFUtils exportToCSVBySectionEntry, jar(`NetCDFUtils-complete.jar') args(`"`ncfile'"' `"`csvfile'"' `"`varname'"' `"`origin0'"' `"`size'"')
+netcdfutils NetCDFUtils.exportToCSVBySection("`ncfile'", "`csvfile'", "`varname'", "`origin0'", "`size'")
 
 end
 

@@ -113,7 +113,8 @@ The {cmd:readraster} package includes the following commands organized by functi
 {phang2}
 {help geotools_init:geotools_init} - Configurate GeoTools Java library for GeoTIFF operations
 
-
+{phang2}
+{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for GeoTIFF operations
 
 {marker setup}{...}
 {title:Setup Java dependencies}
@@ -122,6 +123,7 @@ The {cmd:readraster} package includes the following commands organized by functi
 {pstd}
 Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
 Once downloaded, place this library in Stata’s adopath—or add the library’s file path to Stata’s adopath.
+{p_end}
 
 {pstd}
 For a simplified setup, we provide a dedicated command: {cmd:geotools_init}.
@@ -132,6 +134,7 @@ To configure the environment automatically, simply run the following line in Sta
 
 {pstd}
 Note that this process may take dozens of minutes—Stata’s speed for copying large files from the internet is relatively slow.
+{p_end}
 
 {pstd}
 As a faster alternative, we recommend manually downloading the GeoTools library from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip"} and unzipping the downloaded file. After doing so, initialize the environment by running:
@@ -141,7 +144,22 @@ As a faster alternative, we recommend manually downloading the GeoTools library 
 
 {pstd}
 Note that you should replace {it:path_to_geotools-32.0/lib} with the actual file path to your unzipped GeoTools 32.0 lib folder.
+{p_end}
 
+{pstd}
+Before using the commands {cmd:ncdisp} and {cmd:ncread}, you first need to download the NetCDF Version 5.9.1 Java library.
+{p_end}
+
+{pstd}
+For a simplified setup, we provide a dedicated command: {cmd:netcdf_init}.
+To configure the environment automatically, simply run the following line in Stata:
+{p_end}
+
+{phang2}{cmd:. netcdf_init, download plus(netcdf)}{p_end}
+
+{pstd}
+* The configuration described above is only required the first time you use the package.
+{p_end}
 
 {marker examples}{...}
 {title:Examples}

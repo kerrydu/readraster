@@ -32,7 +32,9 @@ f ncdisp.sthlp
 f ncread.ado
 f ncread.sthlp
 f readraster.sthlp
-f NetCDFUtils-complete.jar
+f netcdfutils.ado
+f netcdf_init.ado
+f netcdf_init.sthlp
 
 
 f DMSP-like2020.tif
