@@ -3,13 +3,23 @@ cap program drop ncdisp
 program define ncdisp,rclass
 version 18
 
- cap findfile NetCDFUtils-complete.jar
-if _rc {
-    di as error "NetCDFUtils-complete.jar NOT found"
-    di as error "make sure NetCDFUtils-complete.jar exists in your adopath"
-    exit
-}
-  
+    cap findfile NetCDFUtils-complete.jar
+    if _rc {
+        display as "installing the jar file, please wait..."
+         cap net install netcdfutil.pkg, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
+         if _rc {
+            cap cnssc install netcdfutil.pkg
+         }
+         sleep 1000
+
+    }
+    cap findfile NetCDFUtils-complete.jar
+    if _rc {
+        di as error "downloading NetCDFUtils-complete.jar failed"
+        di `"please go to {browse "https://github.com/kerrydu/readraster": Github/kerrydu/readraster} to download it and put it in your adopath"'
+        exit
+    }
+    local jarfiles `r(filename)'
 
     // 允许 varname 可选
     syntax [anything] using/, [display]
