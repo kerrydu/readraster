@@ -42,6 +42,11 @@ if _rc {
     ssc install colrspace, replace
 }
 
+cap which sjlog
+if _rc {
+    net install sjlatex, from(http://www.stata-journal.com/production) replace
+}
+
 **********************************************************
 
 capture log close
