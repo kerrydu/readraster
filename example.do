@@ -61,21 +61,21 @@ gtiffdisp DMSP-like2020.tif
 //Display the Metadata of the NetCDF File
 ////The developed commands can directly read nc files on the network. However, due to reasons such as network SSL authentication, the reading may fail. If this happens, you can copy the nc file to the local device and then perform the following corresponding operations.
 local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-"NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-"tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 ncdisp using `"`url'"'
 
 //Display variable metadata with ncdisp
 ///tas variable
 local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-"NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-"tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 ncdisp tas using `"`url'"'
 
 ///time variable
 local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-"NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-"tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 ncdisp time using `"`url'"'
 
 
@@ -120,8 +120,8 @@ graph save gragh1, replace
 
 //Read the NetCDF file
 local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-"NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-"tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 
 // If reading nc files is too slow, you can opt to read local files instead.
 // local url = "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
