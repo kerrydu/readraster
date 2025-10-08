@@ -111,7 +111,8 @@ scalar height = r(ndistinct)
 // 处理 frame 选项
 if "`frame'" != "" {
     // 检查 frame 是否已存在
-    cap frame describe `frame'
+    cap cwf `frame'
+    if _rc =0
     if !_rc {
         di as error "Frame `frame' already exists. Please use a different name or drop the existing frame."
         exit 110

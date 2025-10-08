@@ -17,7 +17,7 @@
 {title:Syntax}
 
 {p 8 17 2}
-{cmdab:gzonalstats} {it:rasterfilename} {cmd:, shpfile}({it:filename}) [{cmd:,} {it:option}]
+{cmdab:gzonalstats} {it:rasterfilename} {cmd:using} {cmd: shpfile}({it:filename}) [{cmd:,} {it:option}]
 
 {p 8 17 2}
 {cmd:shpfile}({it:filename}) specifies the path to the shapefile (.shp) containing polygon zones.This option is required. The shapefile must have the associated files (.shx and .dbf) in the same directory.

@@ -9,12 +9,8 @@ if _rc {
 	exit
 }
 
-cap findfile NetCDFUtils-complete.jar
-if _rc {
-	cap net install netcdfutil.pkg, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
-}
-
-geotools_init, plus(geotools)
+netcdf_init, download plus(netcdf)
+geotools_init, plus(geotools) download
 
 display "******Java dependency has been set up*******"
 display "********Now you can use readraster**********"
