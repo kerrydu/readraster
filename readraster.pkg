@@ -34,6 +34,7 @@ f ncread.sthlp
 f readraster.sthlp
 f netcdf_init.ado
 f netcdf_init.sthlp
+f netcdfutils.ado
 
 
 f DMSP-like2020.tif
