@@ -1,6 +1,6 @@
 cap program drop zonalstats_core
 program define zonalstats_core
-version 18.0
+version 17.0
 syntax using/, Xvar(varname) Yvar(varname) Valuevar(varname) ///
     frame(name) CRS(string) [STATs(string)  NOData(real -9999) ]
 

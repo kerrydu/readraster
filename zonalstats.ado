@@ -1,6 +1,6 @@
 cap program drop zonalstats
 program define zonalstats
-version 18.0
+version 17.0
 
 checkdependencies
 zonalstats_core `0'
