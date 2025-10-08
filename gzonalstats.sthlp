@@ -47,7 +47,7 @@
 {pstd}Vector mode adds CRS specification ({cmd:crs()}) and optional storage of results to a new frame so your original data remain intact.
 
 {title:Dependencies}
-{pstd}All modes require GeoTools Java dependencies; see  {help geotools_init}. 
+{pstd}All modes require GeoTools Java dependencies; see {help geotools_init}. 
 
 {marker rasteropts}{...}
 {title:Raster mode options}
@@ -63,7 +63,7 @@
 {phang}{opt xvar(varname)} Variable holding X (typically longitude / easting) coordinates of grid points.
 {phang}{opt yvar(varname)} Variable holding Y (typically latitude / northing) coordinates.
 {phang}{opt valuevar(varname)} Variable holding cell values to aggregate.
-{phang}{opt frame(name)} Name of a new frame to store results (must not already exist). If omitted results replace data in current frame (if implementation permits); recommended to supply.
+{phang}{opt frame(name)} Name of a new frame to store results (must not already exist). 
 {phang}{opt crs(string)} Coordinate reference system for the in‑memory grid. Forms:
 {p 12 16 2}• EPSG code: {cmd:crs(EPSG:4326)}{break}
 {p 12 16 2}• Reference GeoTIFF: {cmd:crs("ref.tif", tif)}{break}
@@ -79,7 +79,7 @@
 
 {pstd}{bf:Choosing a mode.} If you already have a GeoTIFF, use raster mode (faster, no rasterization). If data are point/grid observations in Stata, use vector mode. Results are equivalent provided the constructed grid matches the original raster's alignment and resolution.
 
-{pstd}{bf:Grid assumptions (vector mode).} Points must form a regular grid. The command infers: resolution, width, height, extent. Duplicate (x,y) keep last value. Irregular spacing will yield incorrect rasterization.
+{pstd}{bf:Grid assumptions (vector mode).} Points must form a regular grid. The command infers: resolution, width, height, extent. Duplicate (x,y) throw errors. Irregular spacing will yield incorrect rasterization.
 
 {pstd}{bf:CRS handling.} Shapefile is reprojected to raster CRS (or specified CRS in vector mode). NetCDF CRS inference attempts EPSG code or WKT; falls back to WGS84 if unresolved.
 
