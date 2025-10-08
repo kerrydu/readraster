@@ -4,7 +4,17 @@ program define gzonalstats
 version 17
 
 checkdependencies
-gzonalstats_core `0'
+
+syntax [anything] using/, [*]
+
+if "`anything'" != "" {
+    gzonalstats_core `0'
+}
+else{
+    zonalstats_core `0'
+}
+
+
 
 end
 
