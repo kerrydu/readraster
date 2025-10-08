@@ -112,8 +112,8 @@ scalar height = r(ndistinct)
 if "`frame'" != "" {
     // 检查 frame 是否已存在
     cap cwf `frame'
-    if _rc =0
-    if !_rc {
+    if _rc =0 {
+        qui cwf `pwf'
         di as error "Frame `frame' already exists. Please use a different name or drop the existing frame."
         exit 110
     }
@@ -273,7 +273,10 @@ import org.geotools.imageio.netcdf.NetCDFReader;
 
 // Stata SFI imports
 import com.stata.sfi.Data;
+import com.stata.sfi.DataFrame;
 import com.stata.sfi.SFIToolkit;
+import com.stata.sfi.Scalar;
+import com.stata.sfi.Macro;
 
 public class ZonalStatsFromData {
 
@@ -326,32 +329,33 @@ public class ZonalStatsFromData {
             
             // Step 1: Read vector data from Stata
             SFIToolkit.displayln("Reading vector data from Stata...");
-            int nObs = Data.getObsTotal();
+            string pwf = Macro.get("pwf");
+            long nObs = DataFrame.getObsTotal(pwf);
             
-            int xVarIndex = Data.getVarIndex(xVar);
-            int yVarIndex = Data.getVarIndex(yVar);
-            int valueVarIndex = Data.getVarIndex(valueVar);
+            int xVarIndex = DataFrame.getVarIndex(pwf,xVar);
+            int yVarIndex = DataFrame.getVarIndex(pwf,yVar);
+            int valueVarIndex = DataFrame.getVarIndex(pwf,valueVar);
             
             double[] xValues = new double[nObs];
             double[] yValues = new double[nObs];
             double[] values = new double[nObs];
             
             for (int i = 0; i < nObs; i++) {
-                xValues[i] = Data.getNum(xVarIndex, i + 1);
-                yValues[i] = Data.getNum(yVarIndex, i + 1);
-                values[i] = Data.getNum(valueVarIndex, i + 1);
+                xValues[i] = DataFrame.getNum(pwf,xVarIndex, i + 1);
+                yValues[i] = DataFrame.getNum(pwf,yVarIndex, i + 1);
+                values[i] = DataFrame.getNum(pwf,valueVarIndex, i + 1);
             }
             
             SFIToolkit.displayln("Read " + nObs + " observations");
             
             // Step 2: Get grid parameters from Stata scalars
-            double minX = Data.getScalar("xmin");
-            double maxX = Data.getScalar("xmax");
-            double minY = Data.getScalar("ymin");
-            double maxY = Data.getScalar("ymax");
-            double resolution = Data.getScalar("resolution");
-            int width = (int)Data.getScalar("width");
-            int height = (int)Data.getScalar("height");
+            double minX = Scalar.getValue("xmin");
+            double maxX = Scalar.getValue("xmax");
+            double minY = Scalar.getValue("ymin");
+            double maxY = Scalar.getValue("ymax");
+            double resolution = Scalar.getValue("resolution");
+            int width = (int)Scalar.getValue("width");
+            int height = (int)Scalar.getValue("height");
             
             SFIToolkit.displayln("Grid parameters:");
             SFIToolkit.displayln("  Bounds: (" + minX + ", " + minY + ") to (" + maxX + ", " + maxY + ")");
