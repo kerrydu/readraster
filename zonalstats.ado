@@ -2,7 +2,7 @@ cap program drop zonalstats
 program define zonalstats
 version 18.0
 syntax using/, Xvar(varname) Yvar(varname) Valuevar(varname) ///
-    frame(name) [STATs(string) CRS(string) NOData(real -9999) ]
+    frame(name) CRS(string) [STATs(string)  NOData(real -9999) ]
 
 // 默认统计量
 if "`stats'"=="" {
