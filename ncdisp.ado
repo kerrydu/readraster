@@ -67,7 +67,7 @@ if _rc{
 
     // 使用javacall调用新的JAR文件
     // javacall NetCDFUtils printVarStructureEntry, jars("NetCDFUtils-complete.jar") args("`file'" "`varname'")
-    netcdfutils NetCDFUtils.printVarStructureEntry("`file'","`varname'")
+    netcdfutils NetCDFUtils.printVarStructure("`file'","`varname'")
 
     return local varname `varname'
     return local dimensions `dimensions' 
