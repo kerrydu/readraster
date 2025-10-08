@@ -47,7 +47,7 @@
 {pstd}Vector mode adds CRS specification ({cmd:crs()}) and optional storage of results to a new frame so your original data remain intact.
 
 {title:Dependencies}
-{pstd}All modes require GeoTools Java dependencies; see help {cmd:geotools_init}. 
+{pstd}All modes require GeoTools Java dependencies; see  {help geotools_init}. 
 
 {marker rasteropts}{...}
 {title:Raster mode options}
