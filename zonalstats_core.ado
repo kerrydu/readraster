@@ -329,7 +329,7 @@ public class ZonalStatsFromData {
             
             // Step 1: Read vector data from Stata
             SFIToolkit.displayln("Reading vector data from Stata...");
-            string pwf = Macro.get("pwf");
+            string pwf = Macro.getLocal("pwf");
             long nObs = DataFrame.getObsTotal(pwf);
             
             int xVarIndex = DataFrame.getVarIndex(pwf,xVar);
