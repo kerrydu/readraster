@@ -21,7 +21,7 @@ local band = `band' - 1
 
 // Default value for stats if not provided
 if missing("`stats'") {
-    local stats "count avg min max"
+    local stats "avg"
 }
 
 //check stats in supported list

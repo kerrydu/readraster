@@ -38,7 +38,7 @@ The {cmd:gzonalstats} command requires Java libraries from GeoTools. Use {cmd:ge
 {title:Options}
 
 {phang}
-{opt stat:s(string)} specifies which statistics to calculate. Default is "count avg min max" if not specified. Valid options are:
+{opt stat:s(string)} specifies which statistics to calculate. Default is "avg" if not specified. Valid options are:
 
 {p 12 16 2}
 {opt count}: the number of pixels in zone{break}
