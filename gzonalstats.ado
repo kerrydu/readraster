@@ -1,4 +1,4 @@
-*! version 2.0.1 2025-10-05
+*! version 3.0.1 2025-10-08
 cap program drop gzonalstats
 program define gzonalstats
 version 17
