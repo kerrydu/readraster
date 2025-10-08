@@ -11,7 +11,7 @@ help for {hi:netcdf_init}
 {title:Syntax}
 
 {p 4 10 2}
-{cmd:readnc_init }[{it:pathofjar}] 
+{cmd:netcdf_init }[{it:pathofjar}] 
 [,{it:options}]
 
 {synoptset 24 tabbed}{...}
