@@ -30,6 +30,9 @@ if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
     local shpfile = "`c(pwd)'/`shpfile'"
 }
 
+// 检查 shapefile 是否存在及其组件
+local shpfile = subinstr(`"`shpfile'"',"\","/",.)
+
 // 默认 CRS (WGS84)
 if "`crs'"=="" {
     local crs "EPSG:4326"
@@ -41,9 +44,9 @@ local crsvalue `r(crsvalue)'
 
 if `crstype'==1 { 
     // 检查文件后缀是不是tif
-    local ext = substr("`crsvalue'", strlen("`crsvalue'")-3, 3)
+    local ext = substr("`crsvalue'", strlen("`crsvalue'")-3, 4)
     if "`ext'"!=".tif" {
-        di as error "Shapefile must have .tif extension"
+        di as error "CRS reference file must have .tif extension"
         exit 198
     }
     if !strmatch("`crsvalue'", "*:\\*") & !strmatch("`crsvalue'", "/*") {
@@ -51,16 +54,31 @@ if `crstype'==1 {
     }
 }
 if `crstype'==2{
-    // 检查文件后缀是不是nc
-    local ext = substr("`crsvalue'", strlen("`crsvalue'")-2, 2)
-    if "`ext'"!=".nc" {
-        di as error "Shapefile must have .nc extension"
+    // 检查文件后缀是不是shp
+    local ext = substr("`crsvalue'", strlen("`crsvalue'")-3, 4)
+    if "`ext'"!=".shp" {
+        di as error "CRS reference file must have .shp extension"
         exit 198
     }
     if !strmatch("`crsvalue'", "*:\\*") & !strmatch("`crsvalue'", "/*") {
         local crsvalue = "`c(pwd)'/`crsvalue'"
     }
 }
+if `crstype'==3{
+    // 检查文件后缀是不是nc
+    local ext = substr("`crsvalue'", strlen("`crsvalue'")-2, 3)
+    if "`ext'"!=".nc" {
+        di as error "CRS reference file must have .nc extension"
+        exit 198
+    }
+    if !strmatch("`crsvalue'", "*:\\*") & !strmatch("`crsvalue'", "/*") {
+        local crsvalue = "`c(pwd)'/`crsvalue'"
+    }
+}
+
+scalar crstype = `crstype'
+
+local crsvalue = subinstr(`"`crsvalue'"',"\","/",.)
 
 // 检查变量是否存在
 confirm variable `xvar' `yvar' `valuevar'
@@ -75,15 +93,11 @@ if _rc {
 qui pwf 
 local pwf = r(currentframe)
 
-
-
-
-// qui sort `yvar' `xvar'
-// local xdelta = `xvar'[2] - `xvar'[1]
-qui su `xvar' , meanonly
+// 计算栅格参数
+qui su `xvar', meanonly
 scalar xmin = r(min)
 scalar xmax = r(max)
-qui su `yvar' , meanonly
+qui su `yvar', meanonly
 scalar ymin = r(min)
 scalar ymax = r(max)
 qui gsort `xvar' -`yvar'
@@ -93,26 +107,6 @@ distinct `xvar'
 scalar width = r(ndistinct) 
 distinct `yvar'
 scalar height = r(ndistinct) 
-
-// // 准备数据：提取 x, y, value 到临时文件
-// tempfile vectordata
-// quietly {
-//     // 保留非缺失的观测
-//     preserve
-//     keep if !missing(`xvar') & !missing(`yvar') 
-    
-//     // 按 x 和 y 排序（这有助于后续处理）
-//     sort `xvar' `yvar'
-    
-//     // 只保留需要的变量
-//     keep `xvar' `yvar' `valuevar'
-    
-//     // 保存为 CSV 格式供 Java 读取
-//     export delimited using "`vectordata'.csv", delimiter(",") novarnames replace
-//     restore
-// }
-
-// local vectordata = subinstr(`"`vectordata'"',"\","/",.)
 
 // 处理 frame 选项
 if "`frame'" != "" {
@@ -132,12 +126,11 @@ if "`frame'" != "" {
     di as text "Switched to frame: `frame'"
 }
 
-
 // 调用 Java 代码
 di as text "Processing vector data with zonal statistics..."
-java: ZonalStats.main("`xvar'", "`yvar'", "`valuevar'", "`shpfile'", "`crsvalue'", `nodata', "`stats'")
+java: ZonalStatsFromData.main("`xvar'", "`yvar'", "`valuevar'", "`shpfile'", `crstype', "`crsvalue'", `nodata', "`stats'")
 
-// 添加变量标签
+// 添加变量标签 - 与 gzonalstats_core.ado 完全一致
 cap confirm var count
 if !_rc {
     label var count "Number of pixels in zone"
@@ -167,7 +160,7 @@ if !_rc {
 if "`frame'" != "" {
     di as text "Results successfully stored in frame: `frame'"
     di as text "Current frame: `frame'"
-    di as text "Use 'frame change `pwf' for switching back to the previous frame"
+    di as text "Use 'frame change `pwf'' for switching back to the previous frame"
 }
 
 end
@@ -180,21 +173,28 @@ syntax, file(string)
 return local file `file'
 end
 
-
+cap program drop parse_crsopt
 program define parse_crsopt, rclass
+syntax anything, [tif shp nc]
 
-syntax anyting,[tif nc]
-if "`tif'"!="" & "`nc'"!="" {
-    di as error "Options tif and nc are mutually exclusive"
+// 检查选项互斥性
+local optcount = ("`tif'"!="") + ("`shp'"!="") + ("`nc'"!="")
+if `optcount' > 1 {
+    di as error "Options tif, shp, and nc are mutually exclusive"
     exit 198
 }
+
 local crstype 0
 local crsvalue `anything'
+
 if "`tif'"!="" {
-    return local crstype 1
+    local crstype 1
+}
+if "`shp'"!="" {
+    local crstype 2
 }
 if "`nc'"!="" {
-    return local crstype 2
+    local crstype 3
 }
 
 return local crstype `crstype'
@@ -202,14 +202,15 @@ return local crsvalue `crsvalue'
 
 end
 
+////////////////////////////////////////
 
 java:
 
-
-// Core GeoTools libraries
+// 添加 NetCDF 相关的 jar 包
 /cp gt-main-32.0.jar
 /cp gt-coverage-32.0.jar
 /cp gt-shapefile-32.0.jar
+/cp gt-geotiff-32.0.jar
 /cp gt-process-raster-32.0.jar
 /cp gt-epsg-hsql-32.0.jar
 /cp gt-epsg-extension-32.0.jar
@@ -217,12 +218,19 @@ java:
 /cp gt-api-32.0.jar
 /cp gt-metadata-32.0.jar
 
+// NetCDF 相关依赖
+/cp gt-netcdf-32.0.jar
+/cp netcdf4-5.5.3.jar
+/cp cdm-core-5.5.3.jar
+/cp udunits-5.5.3.jar
+
 // External dependencies
 /cp json-simple-1.1.1.jar
 /cp commons-lang3-3.15.0.jar
 /cp commons-io-2.16.1.jar
 /cp jts-core-1.20.0.jar
 
+// 添加 NetCDF 相关的 import
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -230,43 +238,76 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
 import java.awt.image.WritableRaster;
 import java.awt.image.DataBuffer;
 
+// GeoTools API imports
+import org.geotools.api.parameter.GeneralParameterValue;
+import org.geotools.api.parameter.ParameterValue;
 import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.coverage.grid.GridEnvelope;
+
+// GeoTools implementation imports
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.coverage.grid.GridEnvelope2D;
+import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
+import org.geotools.coverage.grid.io.AbstractGridFormat;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.store.ReprojectingFeatureCollection;
+import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.raster.RasterZonalStatistics;
 import org.geotools.referencing.CRS;
 
+// NetCDF imports
+import org.geotools.imageio.netcdf.NetCDFReader;
+
+// Stata SFI imports
 import com.stata.sfi.Data;
 import com.stata.sfi.SFIToolkit;
 
-public class ZonalStats {
+public class ZonalStatsFromData {
 
     static {
+        // 完全参考 gzonalstats_core.ado 的日志设置
         System.setProperty("org.geotools.referencing.forceXY", "true");
-        Logger.getLogger("org.geotools").setLevel(Level.WARNING);
+        System.setProperty("org.geotools.factory.hideLegacyServiceImplementations", "true");
+
+        Logger logger = Logger.getLogger("org.geotools.util.factory");
+        logger.setLevel(Level.SEVERE);
+
+        Logger geoToolsLogger = Logger.getLogger("org.geotools");
+        geoToolsLogger.setLevel(Level.WARNING);
+        for (Handler handler : geoToolsLogger.getHandlers()) {
+            if (handler instanceof ConsoleHandler) {
+                handler.setLevel(Level.WARNING);
+            }
+        }
     }
 
     public static void main(String xVar, String yVar, String valueVar, 
-                           String shpPath, String crsString, String statsParam) 
-                           throws Exception {
+                           String shpPath, int crsType, String crsString, 
+                           double noDataValue, String statsParam) throws Exception {
         
+        // 资源管理 - 完全参考 gzonalstats_core.ado
         ShapefileDataStore shapefileDataStore = null;
         SimpleFeatureIterator featureIterator = null;
+        SimpleFeatureCollection featureCollection = null;
+        AbstractGridCoverage2DReader crsReader = null;
         
         try {
-            // Parse requested statistics
+            // Disable excessive logging
+            Logger.getGlobal().setLevel(Level.SEVERE);
+            
+            // Parse requested statistics - 与 gzonalstats_core.ado 完全一致
             String[] requestedStats = statsParam.toLowerCase().split("\\s+");
             boolean showCount = false, showAvg = false, showMin = false;
             boolean showMax = false, showStd = false, showSum = false;
@@ -283,7 +324,7 @@ public class ZonalStats {
             }
             
             // Step 1: Read vector data from Stata
-            System.out.println("Reading vector data from Stata...");
+            SFIToolkit.displayln("Reading vector data from Stata...");
             int nObs = Data.getObsTotal();
             
             int xVarIndex = Data.getVarIndex(xVar);
@@ -300,25 +341,86 @@ public class ZonalStats {
                 values[i] = Data.getNum(valueVarIndex, i + 1);
             }
             
-            System.out.println("Read " + nObs + " observations");
+            SFIToolkit.displayln("Read " + nObs + " observations");
             
-            // Step 2: Determine grid parameters
-           // get xmin, xmax, ymin, ymax, resolution from stata scalars
+            // Step 2: Get grid parameters from Stata scalars
             double minX = Data.getScalar("xmin");
             double maxX = Data.getScalar("xmax");
             double minY = Data.getScalar("ymin");
             double maxY = Data.getScalar("ymax");
             double resolution = Data.getScalar("resolution");
-            // get width, height from stata scalars
-            int width = Data.getScalar("width");
-            int height = Data.getScalar("height");
+            int width = (int)Data.getScalar("width");
+            int height = (int)Data.getScalar("height");
             
-            System.out.println("Grid parameters:");
-            System.out.println("  Bounds: (" + minX + ", " + minY + ") to (" + maxX + ", " + maxY + ")");
-            System.out.println("  Resolution: " + resolution);
-            System.out.println("  Dimensions: " + width + " x " + height);
+            SFIToolkit.displayln("Grid parameters:");
+            SFIToolkit.displayln("  Bounds: (" + minX + ", " + minY + ") to (" + maxX + ", " + maxY + ")");
+            SFIToolkit.displayln("  Resolution: " + resolution);
+            SFIToolkit.displayln("  Dimensions: " + width + " x " + height);
             
-            // Step 3: Create raster from vector data
+            // Step 3: Determine CRS - 添加 NetCDF 支持
+            CoordinateReferenceSystem crs;
+            if (crsType == 0) {
+                // EPSG code
+                crs = CRS.decode(crsString, true);
+                SFIToolkit.displayln("Using CRS from EPSG code: " + crsString);
+            } else if (crsType == 1) {
+                // From TIF file
+                File tifFile = new File(crsString);
+                if (!tifFile.exists()) {
+                    SFIToolkit.errorln("TIF file does not exist: " + crsString);
+                    return;
+                }
+                crsReader = new GeoTiffReader(tifFile);
+                crs = crsReader.getCoordinateReferenceSystem();
+                SFIToolkit.displayln("Using CRS from TIF file: " + crsString);
+            } else if (crsType == 2) {
+                // From SHP file
+                File shpFile = new File(crsString);
+                if (!shpFile.exists()) {
+                    SFIToolkit.errorln("Shapefile does not exist: " + crsString);
+                    return;
+                }
+                ShapefileDataStoreFactory factory = new ShapefileDataStoreFactory();
+                Map<String, Object> params = new HashMap<>();
+                params.put("url", shpFile.toURI().toURL());
+                ShapefileDataStore tempStore = (ShapefileDataStore) factory.createDataStore(params);
+                crs = tempStore.getSchema().getCoordinateReferenceSystem();
+                tempStore.dispose();
+                SFIToolkit.displayln("Using CRS from shapefile: " + crsString);
+            } else if (crsType == 3) {
+                // From NetCDF file - 新增
+                File ncFile = new File(crsString);
+                if (!ncFile.exists()) {
+                    SFIToolkit.errorln("NetCDF file does not exist: " + crsString);
+                    return;
+                }
+                crsReader = new NetCDFReader(ncFile, null);
+                crs = crsReader.getCoordinateReferenceSystem();
+                SFIToolkit.displayln("Using CRS from NetCDF file: " + crsString);
+                
+                // 如果 NetCDF 文件没有明确的 CRS，尝试从元数据推断
+                if (crs == null) {
+                    SFIToolkit.displayln("Warning: NetCDF file does not contain explicit CRS information");
+                    SFIToolkit.displayln("Attempting to infer CRS from metadata...");
+                    
+                    // 尝试读取常见的 CRS 属性
+                    crs = inferCRSFromNetCDF(ncFile);
+                    
+                    if (crs == null) {
+                        SFIToolkit.errorln("Could not infer CRS from NetCDF file. Please specify EPSG code explicitly.");
+                        return;
+                    } else {
+                        SFIToolkit.displayln("Inferred CRS: " + crs.getName().toString());
+                    }
+                }
+            } else {
+                SFIToolkit.errorln("Invalid CRS type: " + crsType);
+                return;
+            }
+            
+            SFIToolkit.displayln("Raster CRS: " + crs.getName().toString());
+            
+            // Step 4: Create raster from vector data
             WritableRaster raster = java.awt.image.Raster.createWritableRaster(
                 new java.awt.image.BandedSampleModel(
                     DataBuffer.TYPE_DOUBLE, width, height, 1
@@ -326,7 +428,6 @@ public class ZonalStats {
             );
             
             // Fill with nodata value
-            double noDataValue = -9999.0;
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     raster.setSample(x, y, 0, noDataValue);
@@ -336,44 +437,16 @@ public class ZonalStats {
             // Fill raster with data
             for (int i = 0; i < nObs; i++) {
                 int col = (int)Math.round((xValues[i] - minX) / resolution);
-                int row = (int)Math.round((maxY - yValues[i]) / resolution); // Flip Y
+                int row = (int)Math.round((maxY - yValues[i]) / resolution);
                 
                 if (col >= 0 && col < width && row >= 0 && row < height) {
                     raster.setSample(col, row, 0, values[i]);
                 }
             }
             
-            System.out.println("Raster created successfully");
+            SFIToolkit.displayln("Raster created successfully");
             
-            // Step 4: Create GridCoverage2D
-            // 从stata获取local crstype
-            string crsType = Data.getLocal("crstype");
-            if (crsType.equals("0")) {
-                CoordinateReferenceSystem crs = CRS.decode(crsString);
-            } 
-            else if (crsType.equals("1")) {
-                //从tif文件获取crs
-                File tifFile = new File(crsString);
-                if (!tifFile.exists()) {
-                    System.out.println("TIF file does not exist: " + crsString);
-                    return;
-                }
-                CoordinateReferenceSystem crs = GeoTools.getCRS(tifFile);
-            }
-            else if (crsType.equals("2")) {
-                //从nc文件获取crs
-                File ncFile = new File(crsString);
-                if (!ncFile.exists()) {
-                    System.out.println("NetCDF file does not exist: " + crsString);
-                    return;
-                }
-                CoordinateReferenceSystem crs = GeoTools.getCRS(ncFile);
-            }
-            else {
-                System.out.println("Invalid CRS type: " + crsType);
-                return;
-            }
-            
+            // Step 5: Create GridCoverage2D
             ReferencedEnvelope envelope = new ReferencedEnvelope(
                 minX, maxX, minY, maxY, crs
             );
@@ -385,12 +458,27 @@ public class ZonalStats {
                 envelope
             );
             
-            System.out.println("GridCoverage2D created with CRS: " + crsString);
+            SFIToolkit.displayln("GridCoverage2D created");
             
-            // Step 5: Load shapefile
+            // Step 6: Load shapefile - 完全参考 gzonalstats_core.ado
             File shpFile = new File(shpPath);
             if (!shpFile.exists()) {
-                System.out.println("Shapefile does not exist: " + shpPath);
+                SFIToolkit.errorln("Shapefile does not exist: " + shpPath);
+                return;
+            }
+
+            // Check for required components - 与 gzonalstats_core.ado 一致
+            String basePath = shpPath.substring(0, shpPath.lastIndexOf("."));
+            File shxFile = new File(basePath + ".shx");
+            File dbfFile = new File(basePath + ".dbf");
+            File prjFile = new File(basePath + ".prj");
+
+            if (!shxFile.exists() || !dbfFile.exists() || !prjFile.exists()) {
+                SFIToolkit.displayln("Warning: Missing required shapefile components:");
+                if (!shxFile.exists()) SFIToolkit.displayln(" - Missing .shx index file");
+                if (!dbfFile.exists()) SFIToolkit.displayln(" - Missing .dbf attribute file");
+                if (!prjFile.exists()) SFIToolkit.displayln(" - Missing .prj projection file");
+                SFIToolkit.errorln("A complete shapefile requires .shp, .shx, .dbf and .prj files.");
                 return;
             }
             
@@ -400,23 +488,29 @@ public class ZonalStats {
             shapefileDataStore = (ShapefileDataStore) dataStoreFactory.createDataStore(shpParams);
             shapefileDataStore.setCharset(java.nio.charset.Charset.forName("UTF-8"));
             
-            SimpleFeatureCollection featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
+            featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
             
-            // Check CRS and reproject if needed
+            // CRS handling - 完全参考 gzonalstats_core.ado
             CoordinateReferenceSystem vectorCRS = shapefileDataStore.getSchema().getCoordinateReferenceSystem();
-            if (!CRS.equalsIgnoreMetadata(crs, vectorCRS)) {
-                System.out.println("Reprojecting shapefile to match raster CRS");
+            SFIToolkit.displayln("Shapefile CRS: " + vectorCRS.getName().toString());
+            
+            boolean needsReprojection = !CRS.equalsIgnoreMetadata(crs, vectorCRS);
+            
+            if (needsReprojection) {
+                SFIToolkit.displayln("Reprojecting shapefile to match raster CRS");
                 featureCollection = new ReprojectingFeatureCollection(featureCollection, crs);
+            } else {
+                SFIToolkit.displayln("Coordinate systems are compatible, no reprojection needed");
             }
             
-            // Step 6: Calculate zonal statistics
-            System.out.println("Calculating zonal statistics...");
+            // Step 7: Calculate zonal statistics
+            SFIToolkit.displayln("Calculating zonal statistics...");
             RasterZonalStatistics process = new RasterZonalStatistics();
             SimpleFeatureCollection resultFeatures = process.execute(
                 coverage, 0, featureCollection, null
             );
             
-            // Step 7: Export results to Stata
+            // Step 8: Process and export results - 完全参考 gzonalstats_core.ado 的处理方式
             List<SimpleFeature> allFeatures = new ArrayList<>();
             featureIterator = resultFeatures.features();
             try {
@@ -430,68 +524,112 @@ public class ZonalStats {
             }
             
             int totalFeatures = allFeatures.size();
-            System.out.println("Total features: " + totalFeatures);
+            SFIToolkit.displayln("Total features: " + totalFeatures);
             
             if (totalFeatures > 0) {
-                // Set up Stata dataset (similar to original code)
-                Data.setObsTotal(totalFeatures);
-                
-                SimpleFeature firstFeature = allFeatures.get(0);
+                // 变量创建和数据填充逻辑 - 与 gzonalstats_core.ado 完全一致
                 Map<String, Integer> attributeNameMap = new HashMap<>();
                 List<String> idAttrNames = new ArrayList<>();
+                String countAttrName = null;
+                String avgAttrName = null;
+                String minAttrName = null;
+                String maxAttrName = null;
+                String stddevAttrName = null;
+                String sumAttrName = null;
                 
-                int varIndex = 1;
-                
-                // Create ID variables
+                SimpleFeature firstFeature = allFeatures.get(0);
                 for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
                     String attributeName = firstFeature.getType().getDescriptor(i).getLocalName();
                     
-                    if (attributeName.equals("the_geom") || attributeName.startsWith("z_")) {
-                        continue;
+                    if (attributeName.equals("count")) {
+                        if (showCount) countAttrName = attributeName;
+                    } else if (attributeName.equals("avg")) {
+                        if (showAvg) avgAttrName = attributeName;
+                    } else if (attributeName.equals("min")) {
+                        if (showMin) minAttrName = attributeName;
+                    } else if (attributeName.equals("max")) {
+                        if (showMax) maxAttrName = attributeName;
+                    } else if (attributeName.equals("stddev")) {
+                        if (showStd) stddevAttrName = attributeName;
+                    } else if (attributeName.equals("sum")) {
+                        if (showSum) sumAttrName = attributeName;
+                    } else if (!attributeName.equals("the_geom") && !attributeName.equals("z_the_geom") &&
+                              !attributeName.equals("sum_2")) {
+                        idAttrNames.add(attributeName);
+                    }
+                }
+                
+                Data.setObsTotal(totalFeatures);
+                
+                int varIndex = 1;
+                
+                // Create ID attribute variables - 与 gzonalstats_core.ado 一致
+                for (String idAttr : idAttrNames) {
+                    Object value = firstFeature.getAttribute(idAttr);
+                    
+                    if (value instanceof Number) {
+                        Data.addVarDouble(idAttr);
+                        SFIToolkit.displayln("Created numeric variable: " + idAttr);
+                    } else {
+                        int strLength = 32;
+                        if (value != null) {
+                            String strValue = value.toString();
+                            if (strValue.length() <= 16) {
+                                strLength = 16;
+                            } else if (strValue.length() <= 32) {
+                                strLength = 32;
+                            } else if (strValue.length() <= 48) {
+                                strLength = 48;
+                            } else {
+                                strLength = 244;
+                            }
+                        }
+                        
+                        Data.addVarStr(idAttr, strLength);
+                        SFIToolkit.displayln("Created string variable: " + idAttr + " (length " + strLength + ")");
                     }
                     
-                    if (!attributeName.equals("count") && !attributeName.equals("mean") &&
-                        !attributeName.equals("min") && !attributeName.equals("max") &&
-                        !attributeName.equals("stddev") && !attributeName.equals("sum")) {
-                        
-                        Object value = firstFeature.getAttribute(attributeName);
-                        if (value instanceof Number) {
-                            Data.addVarDouble(attributeName);
-                        } else {
-                            Data.addVarStr(attributeName, 244);
-                        }
-                        idAttrNames.add(attributeName);
-                        attributeNameMap.put(attributeName, varIndex++);
-                    }
+                    attributeNameMap.put(idAttr, varIndex++);
                 }
                 
-                // Create statistics variables
-                if (showCount) {
+                // Create statistics variables - 与 gzonalstats_core.ado 一致
+                if (showCount && countAttrName != null) {
                     Data.addVarDouble("count");
-                    attributeNameMap.put("count", varIndex++);
-                }
-                if (showAvg) {
-                    Data.addVarDouble("avg");
-                    attributeNameMap.put("mean", varIndex++);
-                }
-                if (showMin) {
-                    Data.addVarDouble("min");
-                    attributeNameMap.put("min", varIndex++);
-                }
-                if (showMax) {
-                    Data.addVarDouble("max");
-                    attributeNameMap.put("max", varIndex++);
-                }
-                if (showStd) {
-                    Data.addVarDouble("std");
-                    attributeNameMap.put("stddev", varIndex++);
-                }
-                if (showSum) {
-                    Data.addVarDouble("sum");
-                    attributeNameMap.put("sum", varIndex++);
+                    attributeNameMap.put(countAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: count");
                 }
                 
-                // Fill data
+                if (showAvg && avgAttrName != null) {
+                    Data.addVarDouble("avg");
+                    attributeNameMap.put(avgAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: avg");
+                }
+                
+                if (showMin && minAttrName != null) {
+                    Data.addVarDouble("min");
+                    attributeNameMap.put(minAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: min");
+                }
+                
+                if (showMax && maxAttrName != null) {
+                    Data.addVarDouble("max");
+                    attributeNameMap.put(maxAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: max");
+                }
+                
+                if (showStd && stddevAttrName != null) {
+                    Data.addVarDouble("std");
+                    attributeNameMap.put(stddevAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: std");
+                }
+                
+                if (showSum && sumAttrName != null) {
+                    Data.addVarDouble("sum");
+                    attributeNameMap.put(sumAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: sum");
+                }
+                
+                // Fill data - 与 gzonalstats_core.ado 完全一致
                 for (int i = 0; i < totalFeatures; i++) {
                     SimpleFeature feature = allFeatures.get(i);
                     int stataObs = i + 1;
@@ -500,9 +638,10 @@ public class ZonalStats {
                     for (String idAttr : idAttrNames) {
                         Object value = feature.getAttribute(idAttr);
                         int stataVar = attributeNameMap.get(idAttr);
+                        
                         if (value != null) {
                             if (value instanceof Number) {
-                                Data.storeNum(stataVar, stataObs, ((Number)value).doubleValue());
+                                Data.storeNumFast(stataVar, stataObs, ((Number) value).doubleValue());
                             } else {
                                 Data.storeStr(stataVar, stataObs, value.toString());
                             }
@@ -510,60 +649,149 @@ public class ZonalStats {
                     }
                     
                     // Statistics
-                    if (showCount) {
-                        Object value = feature.getAttribute("count");
+                    if (showCount && countAttrName != null) {
+                        Object value = feature.getAttribute(countAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("count"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
-                    if (showAvg) {
-                        Object value = feature.getAttribute("mean");
+                    
+                    if (showAvg && avgAttrName != null) {
+                        Object value = feature.getAttribute(avgAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("mean"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
-                    if (showMin) {
-                        Object value = feature.getAttribute("min");
+                    
+                    if (showMin && minAttrName != null) {
+                        Object value = feature.getAttribute(minAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("min"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
-                    if (showMax) {
-                        Object value = feature.getAttribute("max");
+                    
+                    if (showMax && maxAttrName != null) {
+                        Object value = feature.getAttribute(maxAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("max"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
-                    if (showStd) {
-                        Object value = feature.getAttribute("stddev");
+                    
+                    if (showStd && stddevAttrName != null) {
+                        Object value = feature.getAttribute(stddevAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("stddev"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
-                    if (showSum) {
-                        Object value = feature.getAttribute("sum");
+                    
+                    if (showSum && sumAttrName != null) {
+                        Object value = feature.getAttribute(sumAttrName);
                         if (value != null) {
-                            Data.storeNum(attributeNameMap.get("sum"), stataObs, 
-                                        ((Number)value).doubleValue());
+                            Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, 
+                                            ((Number) value).doubleValue());
                         }
                     }
                 }
                 
-                System.out.println("Data successfully exported to Stata");
+                Data.updateModified();
+                SFIToolkit.displayln("Data successfully exported to Stata dataset.");
+            } else {
+                SFIToolkit.displayln("No features found in the result set.");
             }
             
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
-            e.printStackTrace();
+            SFIToolkit.errorln("Error in ZonalStatsFromData: " + e.getMessage());
+            SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
         } finally {
-            if (featureIterator != null) featureIterator.close();
-            if (shapefileDataStore != null) shapefileDataStore.dispose();
-            System.gc();
+            // 资源清理 - 与 gzonalstats_core.ado 完全一致
+            try {
+                if (featureIterator != null) {
+                    featureIterator.close();
+                }
+                if (crsReader != null) {
+                    crsReader.dispose();
+                }
+                if (shapefileDataStore != null) {
+                    shapefileDataStore.dispose();
+                }
+                System.gc();
+            } catch (Exception e) {
+                SFIToolkit.errorln("Error closing resources: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * 从 NetCDF 文件推断 CRS
+     * 尝试读取常见的 CRS 相关属性
+     */
+    private static CoordinateReferenceSystem inferCRSFromNetCDF(File ncFile) {
+        try {
+            // 使用 NetCDF Java 库直接读取元数据
+            ucar.nc2.NetcdfFile netcdfFile = ucar.nc2.NetcdfFiles.open(ncFile.getAbsolutePath());
+            
+            try {
+                // 查找常见的 CRS 相关属性
+                // 1. 查找 crs 变量
+                ucar.nc2.Variable crsVar = netcdfFile.findVariable("crs");
+                if (crsVar == null) {
+                    crsVar = netcdfFile.findVariable("spatial_ref");
+                }
+                if (crsVar == null) {
+                    crsVar = netcdfFile.findVariable("projection");
+                }
+                
+                if (crsVar != null) {
+                    // 尝试读取 EPSG 代码
+                    ucar.nc2.Attribute epsgAttr = crsVar.findAttribute("epsg_code");
+                    if (epsgAttr == null) {
+                        epsgAttr = crsVar.findAttribute("EPSG");
+                    }
+                    
+                    if (epsgAttr != null) {
+                        int epsgCode = epsgAttr.getNumericValue().intValue();
+                        SFIToolkit.displayln("Found EPSG code in NetCDF: " + epsgCode);
+                        return CRS.decode("EPSG:" + epsgCode, true);
+                    }
+                    
+                    // 尝试读取 WKT
+                    ucar.nc2.Attribute wktAttr = crsVar.findAttribute("spatial_ref");
+                    if (wktAttr == null) {
+                        wktAttr = crsVar.findAttribute("crs_wkt");
+                    }
+                    
+                    if (wktAttr != null) {
+                        String wkt = wktAttr.getStringValue();
+                        SFIToolkit.displayln("Found WKT in NetCDF");
+                        return CRS.parseWKT(wkt);
+                    }
+                }
+                
+                // 2. 检查全局属性
+                ucar.nc2.Attribute globalCrsAttr = netcdfFile.findGlobalAttribute("crs");
+                if (globalCrsAttr != null) {
+                    String crsString = globalCrsAttr.getStringValue();
+                    if (crsString.startsWith("EPSG:")) {
+                        return CRS.decode(crsString, true);
+                    }
+                }
+                
+                // 3. 默认假设为 WGS84
+                SFIToolkit.displayln("No CRS metadata found, defaulting to WGS84 (EPSG:4326)");
+                return CRS.decode("EPSG:4326", true);
+                
+            } finally {
+                netcdfFile.close();
+            }
+            
+        } catch (Exception e) {
+            SFIToolkit.displayln("Error inferring CRS from NetCDF: " + e.getMessage());
+            return null;
         }
     }
 }
