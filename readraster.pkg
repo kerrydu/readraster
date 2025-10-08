@@ -35,6 +35,9 @@ f readraster.sthlp
 f netcdf_init.ado
 f netcdf_init.sthlp
 f netcdfutils.ado
+f zonalstats.ado
+f zonalstats.sthlp
+f zonalstats_core.ado
 
 
 f DMSP-like2020.tif

@@ -100,7 +100,11 @@ The {cmd:readraster} package includes the following commands organized by functi
 {dlgtab:Spatial Analysis}
 
 {phang2}
-{help gzonalstats:gzonalstats} - Calculate zonal statistics from raster data using polygon zones
+{help gzonalstats:gzonalstats} - Calculate zonal statistics from raster data in Geotiff file for areas of interest
+
+{phang2}
+{help zonalstats:gzonalstats} - Calculate zonal statistics from raster data in Stata for areas of interest
+
 
 {phang2}
 {help matchgeop:matchgeop} - Match datasets based on geographic proximity and location
