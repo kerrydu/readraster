@@ -2,7 +2,7 @@
 {* *! version 2.0  08oct2025  (merged modes)}{...}
 {vieweralsosee "[R] merge" "help merge"}{...}
 {vieweralsosee "" "--"}{...}
-{vieweralsosee "[R] geonear" "help geonear"}{...}
+{vieweralsosee "[R] matchgeop" "help matchgeop"}{...}
 {viewerjumpto "Syntax" "gzonalstats##syntax"}{...}
 {viewerjumpto "Description" "gzonalstats##description"}{...}
 {viewerjumpto "Raster mode options" "gzonalstats##rasteropts"}{...}
