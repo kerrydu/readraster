@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.0  03jun2025}{...}
+{* *! version 1.1.0  09oct2025}{...}
 {vieweralsosee "" "--"}{...}
 {vieweralsosee "Install readraster" "ssc install readraster"}{...}
 {viewerjumpto "Syntax" "readraster##syntax"}{...}
@@ -89,6 +89,9 @@ The {cmd:readraster} package includes the following commands organized by functi
 {phang2}
 {help gtiffdisp:gtiffdisp} - Display metadata information from GeoTIFF files
 
+{phang2}
+{help gtiffwrite:gtiffwrite} - Write Stata grid data to GeoTIFF raster file
+
 {dlgtab:NetCDF Operations}
 
 {phang2}
@@ -125,7 +128,7 @@ The {cmd:readraster} package includes the following commands organized by functi
 
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
 Once downloaded, place this library in Stata’s adopath—or add the library’s file path to Stata’s adopath.
 {p_end}
 
@@ -184,6 +187,11 @@ Read entire GeoTIFF file:
 Read subset of GeoTIFF:
 {p_end}
 {phang2}{cmd:. gtiffread DMSP-like2020.tif, origin(100 200) size(500 500) clear}{p_end}
+
+{phang}
+Write grid data to GeoTIFF:
+{p_end}
+{phang2}{cmd:. gtiffwrite output.tif, xvar(lon) yvar(lat) valuevar(temp) crs(EPSG:4326)}{p_end}
 
 {dlgtab:NetCDF Operations}
 

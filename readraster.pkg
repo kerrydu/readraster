@@ -1,7 +1,7 @@
 v 3
 d readraster: Reading and processing geographical raster data in Stata
 d
-d Distribution-Date: 20251005
+d Distribution-Date: 20251009
 d
 d Author: Kerry Du, School of Management, Xiamen University
 d Author: Chunxia Chen, School of Management, Xiamen University  
@@ -22,6 +22,9 @@ f gtiffdisp_core.ado
 f gtiffread.ado
 f gtiffread.sthlp
 f gtiffread_core.ado
+f gtiffwrite.ado
+f gtiffwrite.sthlp
+f gtiffwrite_core.ado
 f gzonalstats.ado
 f gzonalstats.sthlp
 f gzonalstats_core.ado
