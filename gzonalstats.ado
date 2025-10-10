@@ -5,13 +5,17 @@ version 17
 
 checkdependencies
 
-syntax [anything] using/, [*]
+syntax anything using/, [*]
 
-if "`anything'" != "" {
+if strmatch("`anything'", "*.tif") | strmatch("`anything'", "*.tiff") {
     gzonalstats_core `0'
 }
+else if strmatch("`anything'", "*.nc"){
+    nzonalstats_core `0'
+}
 else{
-    zonalstats_core `0'
+    di as error "`anything'" " is not a supported raster file. Supported formats are GeoTIFF (*.tif, *.tiff) and NetCDF (*.nc)."
+    exit 198
 }
 
 

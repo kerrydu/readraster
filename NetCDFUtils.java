@@ -7,6 +7,10 @@ import ucar.nc2.Attribute;
 import ucar.ma2.Array;
 import ucar.ma2.DataType;
 import ucar.ma2.InvalidRangeException;
+import ucar.ma2.MAMath;
+
+// NetCDF writing imports
+import ucar.nc2.write.NetcdfFormatWriter;
 
 // Java standard library imports
 import java.io.IOException;
@@ -68,6 +72,128 @@ public class NetCDFUtils {
             SFIToolkit.errorln("Error in printVarStructureEntry: " + e.getMessage());
             return 111; // General error
         }
+    }
+
+    /**
+     * 将NetCDF中的某变量按指定切片写入一个新的NetCDF文件
+     * 要求：除经纬度(x/y, lon/lat)之外的坐标轴如果size==1，则在新文件中删除该坐标轴及其坐标变量
+     * 支持size中的-1，表示直到该维度末尾
+     * 只写出：被裁剪的主变量 和 保留的坐标轴变量，以及原文件的全局属性
+     */
+    public static void subsetToFile(String inPath, String outPath, String variableName, String strOrigin, String strSize) {
+        int[] origin = parseIndices(strOrigin);
+        int[] size = parseIndices(strSize);
+
+        try (NetcdfDataset nc = NetcdfDatasets.openDataset(inPath)) {
+            Variable mainVar = nc.findVariable(variableName);
+            if (mainVar == null) {
+                SFIToolkit.errorln("Variable " + variableName + " not found");
+                return;
+            }
+
+            List<Dimension> dims = mainVar.getDimensions();
+            if (origin.length != dims.size() || size.length != dims.size()) {
+                SFIToolkit.errorln("The number of origin and count should be equal # of axes in nc file.");
+                return;
+            }
+
+            // Resolve -1 sizes and validate ranges
+            for (int i = 0; i < dims.size(); i++) {
+                int dimLen = dims.get(i).getLength();
+                if (origin[i] < 0 || origin[i] >= dimLen) {
+                    SFIToolkit.errorln("Origin index " + (origin[i] + 1) + " is out of bounds for dimension " +
+                            dims.get(i).getShortName() + " with length " + dimLen);
+                    return;
+                }
+                if (size[i] == -1) size[i] = dimLen - origin[i];
+                if (origin[i] + size[i] > dimLen) {
+                    SFIToolkit.errorln("Reading section exceeds bounds for dimension " +
+                            dims.get(i).getShortName() + ": origin=" + (origin[i] + 1) +
+                            ", size=" + size[i] + ", dimension length=" + dimLen);
+                    return;
+                }
+            }
+
+            // Determine which dims to keep (always keep spatial x/y; drop other singleton axes)
+            boolean[] keep = new boolean[dims.size()];
+            List<String> keptDimNames = new ArrayList<>();
+            List<Integer> keptDimSizes = new ArrayList<>();
+            for (int i = 0; i < dims.size(); i++) {
+                String dname = dims.get(i).getShortName();
+                int dsize = size[i];
+                boolean spatial = isSpatialDim(dname);
+                keep[i] = spatial || dsize > 1;
+                if (keep[i]) {
+                    keptDimNames.add(dname);
+                    keptDimSizes.add(dsize);
+                }
+            }
+
+            // Prepare writer builder (NetCDF-3 classic for max compatibility)
+            NetcdfFormatWriter.Builder writerb = NetcdfFormatWriter.createNewNetcdf3(outPath);
+
+            // Copy global attributes
+            nc.getGlobalAttributes().forEach(att -> writerb.addAttribute(att));
+
+            // Add kept dimensions
+            Map<String, ucar.nc2.Dimension> newDimMap = new HashMap<>();
+            for (int i = 0; i < keptDimNames.size(); i++) {
+                String nm = keptDimNames.get(i);
+                int len = keptDimSizes.get(i);
+                ucar.nc2.Dimension nd = writerb.addDimension(nm, len);
+                newDimMap.put(nm, nd);
+            }
+
+            // Add coordinate variables for kept dims if present
+            List<String> coordToWrite = new ArrayList<>();
+            for (String nm : keptDimNames) {
+                Variable coord = nc.findVariable(nm);
+                if (coord != null && coord.getRank() == 1) {
+                    writerb.addVariable(nm, coord.getDataType(), nm);
+                    // Copy all attributes
+                    coord.attributes().forEach(att -> writerb.addVariableAttribute(nm, att));
+                    coordToWrite.add(nm);
+                }
+            }
+
+            // Add main variable with kept dims
+            String dimsString = String.join(" ", keptDimNames);
+            writerb.addVariable(variableName, mainVar.getDataType(), dimsString);
+            mainVar.attributes().forEach(att -> writerb.addVariableAttribute(variableName, att));
+
+            // Build writer and write data
+            try (NetcdfFormatWriter writer = writerb.build()) {
+                // Write coordinate variables
+                for (int i = 0; i < dims.size(); i++) {
+                    if (!keep[i]) continue;
+                    String nm = dims.get(i).getShortName();
+                    if (!coordToWrite.contains(nm)) continue;
+                    Variable coordVar = nc.findVariable(nm);
+                    int o = origin[i];
+                    int s = size[i];
+                    Array coordData = coordVar.read(new int[]{o}, new int[]{s});
+                    writer.write(writer.findVariable(nm), coordData);
+                }
+
+                // Write main variable (reshape if some dims dropped)
+                Array section = mainVar.read(origin, size);
+                // Build kept shape
+                int[] keptShape = keptDimSizes.stream().mapToInt(Integer::intValue).toArray();
+                Object storage = section.copyTo1DJavaArray();
+                Array reshaped = Array.factory(mainVar.getDataType(), keptShape, storage);
+                writer.write(writer.findVariable(variableName), reshaped);
+            }
+            SFIToolkit.display("Subset written to: " + outPath + "\n");
+        } catch (Exception e) {
+            SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
+        }
+    }
+
+    // 识别经纬度/空间维度
+    private static boolean isSpatialDim(String name) {
+        String n = name.toLowerCase();
+        return n.equals("lon") || n.equals("longitude") || n.equals("x")
+            || n.equals("lat") || n.equals("latitude") || n.equals("y");
     }
     
     /**

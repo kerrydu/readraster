@@ -46,7 +46,7 @@ Questions answered:
 - Full extent or sub-window needed?
 - Single band or choose with `band()` later?
 
-### 3.2 NetCDF: `ncdisp`
+### 3.2 NetCDF: `ncdisp` and `ncsubset`
 Purpose: Understand dimensions (time, lat, lon, level), variable names, units, missing value code, CRS metadata.
 
 Example:
@@ -55,6 +55,11 @@ local url "...tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 ncdisp using `url'
 // Focus on target variable
 ncdisp tas using `url'
+If you need a smaller NetCDF with just a slice (e.g., one time and a spatial window), write it directly:
+```stata
+// time, lat, lon order; drop time axis by setting size(1 ...)
+ncsubset tas using `url', origin(1 `lat_start' `lon_start') size(1 `lat_count' `lon_count') saving(tas_subset.nc) replace clear
+```
 ```
 Questions answered:
 - Dimension ordering? (time lat lon) or (lat lon time)?
@@ -88,18 +93,19 @@ collapse (mean) tas_c, by(lat lon)
 ```
 
 ---
-## 5. Step 3A: Polygon Zonal Statistics with `gzonalstats` / 多边形区域统计
-Use when you have AOI polygons (administrative boundaries, buffers, ecological zones). Two modes:
+## 5. Step 3A: Polygon Zonal Statistics with `gzonalstats` / `nzonalstats` / 多边形区域统计
+Use when you have AOI polygons (administrative boundaries, buffers, ecological zones). Two modes for GeoTIFF, one mode for NetCDF:
 - Raster mode: Directly supply GeoTIFF and shapefile.
 - Vector mode: Supply an in-memory grid (from `gtiffread` or aggregated `ncread`) with x,y,value variables and shapefile.
+- NetCDF mode: Directly supply NetCDF file, variable name, and shapefile.
 
-### 5.1 Raster Mode
+### 5.1 Raster Mode (GeoTIFF)
 ```stata
 gzonalstats DMSP-like2020.tif using hunan.shp, stats("avg sum") clear
 ```
 Outputs one record per polygon with requested stats (avg, sum, min, max, std, count).
 
-### 5.2 Vector Mode
+### 5.2 Vector Mode (GeoTIFF)
 If you already transformed / pre-processed raster cells into a grid inside Stata:
 ```stata
 // Suppose dataset has lon lat nl_value
@@ -113,6 +119,13 @@ gzonalstats using hunan.shp, xvar(x) yvar(y) valuevar(value) frame(nl_stats) crs
 Benefits:
 - Reuse transformed / masked cell data
 - Avoid re-reading large GeoTIFF multiple times
+
+### 5.3 NetCDF Mode
+For NetCDF data, use `nzonalstats` which validates that the variable has 2 spatial dimensions (allowing degenerate dimensions like (1,1,5,6)):
+```stata
+nzonalstats hunan.shp using climate.nc, var(temperature) stats("avg min max") clear
+```
+This directly computes zonal statistics from NetCDF variables without needing to first vectorize the data.
 
 ---
 ## 6. Step 3B: Point Exposure via `matchgeop` + Inverse Distance Weighting / 点位暴露估计

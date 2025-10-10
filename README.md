@@ -46,6 +46,7 @@ net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraste
 3. **Data Reading Commands**
    - `gtiffread`: Read GeoTIFF data and vectorize
    - `ncread`: Read NetCDF data and vectorize
+   - `ncsubset`: Slice a NetCDF variable and write a new NetCDF file (drops non-spatial singleton axes)
 
 4. **Spatial Operation Commands**
    - `crsconvert`: Coordinate system conversion
@@ -339,10 +340,12 @@ net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraste
 3. **数据读取命令**
    - `gtiffread`：读取GeoTIFF数据并向量化
    - `ncread`：读取NetCDF数据并向量化
+   - `ncsubset`：切片NetCDF变量并写入新NetCDF（删除非空间的单例坐标轴）
 
 4. **空间操作命令**
    - `crsconvert`：坐标系转换
    - `gzonalstats`：计算区域统计（均值、标准差、最值等）
+   - `nzonalstats`：NetCDF区域统计（基于gzonalstats扩展）
    - `matchgeop`：基于地理位置的最近邻匹配
 
 #### 🎯 支持的数据格式

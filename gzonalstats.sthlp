@@ -1,98 +1,88 @@
 {smcl}
-{* *! version 2.0  08oct2025  (merged modes)}{...}
+{* *! version 3.0  10oct2025  (unified GeoTIFF/NetCDF)}{...}
 {vieweralsosee "[R] merge" "help merge"}{...}
 {vieweralsosee "" "--"}{...}
 {vieweralsosee "[R] matchgeop" "help matchgeop"}{...}
 {viewerjumpto "Syntax" "gzonalstats##syntax"}{...}
 {viewerjumpto "Description" "gzonalstats##description"}{...}
-{viewerjumpto "Raster mode options" "gzonalstats##rasteropts"}{...}
-{viewerjumpto "Vector-to-raster mode options" "gzonalstats##vectoropts"}{...}
+{viewerjumpto "Options" "gzonalstats##rasteropts"}{...}
 {viewerjumpto "Remarks" "gzonalstats##remarks"}{...}
 {viewerjumpto "Examples" "gzonalstats##examples"}{...}
 {viewerjumpto "Stored results" "gzonalstats##results"}{...}
 {title:Title}
 
 {phang}
-{bf:gzonalstats} {hline 2} Zonal statistics command: (1) direct GeoTIFF raster mode and (2) in‑memory vector grid -> raster mode
+{bf:gzonalstats} {hline 2} Zonal statistics command for GeoTIFF and NetCDF raster files
 
 
 {marker syntax}{...}
 {title:Syntax}
 
-{pstd}{ul:Two distinct syntaxes (choose one):}
+{p 8 17 2}{cmd:gzonalstats} {it:rasterfilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} [{opt band(#)} {opt clear} {opt crs(string)}]{p_end}
 
-{p 4 8 2}{bf:Raster mode (direct GeoTIFF)}{p_end}
-{p 8 17 2}{cmd:gzonalstats} {it:rasterfilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} [{opt band(#)} {opt clear}]{p_end}
+{pstd}For NetCDF files:
+{p 8 17 2}{cmd:gzonalstats} {it:netcdffilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} {opt var(string)} [{opt clear} {opt origin(numlist)} {opt size(numlist)} {opt crs(string)}]{p_end}
 
-{p 4 8 2}{bf:Vector-to-raster mode (former zonalstats_core)}{p_end}
-{p 8 17 2}{cmd:gzonalstats} {cmd:using} {it:shapefile}{cmd:,} {opt xvar(varname)} {opt yvar(varname)} {opt valuevar(varname)} {opt frame(name)} {opt crs(string)} [{opt stats(string)} {opt nodata(#)}]{p_end}
-
-{pstd}In raster mode a GeoTIFF file is read directly. In vector mode the data already in Stata (regular grid of x,y,value) is rasterized on‑the‑fly before computing zonal statistics.
+{pstd}{it:rasterfilename} can be a GeoTIFF (.tif or .tiff) or NetCDF (.nc) file. The command automatically detects the file type and uses the appropriate processing method.
 
 {p 8 17 2}{cmd:shapefile} must include accompanying .shx .dbf (and ideally .prj) files.
 
 {marker description}{...}
 {title:Description}
 
-{pstd}{cmd:gzonalstats} computes statistics of raster cell values aggregated over polygon zones defined in a shapefile. It now unifies two workflows:
+{pstd}{cmd:gzonalstats} computes statistics of raster cell values aggregated over polygon zones defined in a shapefile. It supports both GeoTIFF and NetCDF raster files:
 
-{p 6 10 2}1. {bf:Raster mode}: read one band of a GeoTIFF on disk and summarize values inside each polygon.{p_end}
-{p 6 10 2}2. {bf:Vector mode}: take a regular grid present as point observations (x,y,value) in memory, build a temporary raster, then summarize by polygon.{p_end}
+{p 6 10 2}• {bf:GeoTIFF files}: Direct reading of one band from GeoTIFF files on disk{p_end}
+{p 6 10 2}• {bf:NetCDF files}: Reading and processing of NetCDF variables with optional slicing{p_end}
 
-{pstd}For both modes the command:
-{p 8 12 2}• Reprojects the shapefile to match the raster / constructed raster CRS if needed{p_end}
+{pstd}The command automatically detects the file type based on the file extension and uses the appropriate processing method.
+
+{pstd}Features:
+{p 8 12 2}• Reprojects the shapefile to match the raster CRS if needed{p_end}
 {p 8 12 2}• Supports multiple statistics (count avg min max std sum){p_end}
 {p 8 12 2}• Uses GeoTools Java libraries for spatial processing{p_end}
-
-{pstd}Vector mode adds CRS specification ({cmd:crs()}) and optional storage of results to a new frame so your original data remain intact.
+{p 8 12 2}• Automatic CRS detection with fallback to user-specified CRS{p_end}
+{p 8 12 2}• NetCDF slicing support with origin() and size() options{p_end}
 
 {title:Dependencies}
 {pstd}All modes require GeoTools Java dependencies; see {help geotools_init}. 
 
 {marker rasteropts}{...}
-{title:Raster mode options}
+{title:Options}
 
+{dlgtab:Common options}
 {phang}{opt stats(string)} Statistics to compute; default {cmd:avg}. Any space‑separated subset of {cmd:count avg min max std sum}. Invalid names produce an error.
-{phang}{opt band(#)} Band index (1-based) for multi-band GeoTIFF. Default 1; must be >=1.
 {phang}{opt clear} Clear current data in memory before loading results (required if data present).
+{phang}{opt crs(string)} Coordinate reference system for the raster data. If the raster file contains CRS information, this option is ignored and a message is displayed. If no CRS is detected in the file and this option is not provided, an error occurs.
 
-{marker vectoropts}{...}
-{title:Vector-to-raster mode options}
+{dlgtab:GeoTIFF-specific options}
+{phang}{opt band(#)} Band index (1-based) for multi-band GeoTIFF. Default 1; must be >=1.
 
-{dlgtab:Required}
-{phang}{opt xvar(varname)} Variable holding X (typically longitude / easting) coordinates of grid points.
-{phang}{opt yvar(varname)} Variable holding Y (typically latitude / northing) coordinates.
-{phang}{opt valuevar(varname)} Variable holding cell values to aggregate.
-{phang}{opt frame(name)} Name of a new frame to store results (must not already exist). 
-{phang}{opt crs(string)} Coordinate reference system for the in‑memory grid. Forms:
-{p 12 16 2}• EPSG code: {cmd:crs(EPSG:4326)}{break}
-{p 12 16 2}• Reference GeoTIFF: {cmd:crs("ref.tif", tif)}{break}
-{p 12 16 2}• Reference shapefile: {cmd:crs("ref.shp", shp)}{break}
-{p 12 16 2}• Reference NetCDF: {cmd:crs("ref.nc", nc)} (attempts CRS inference){p_end}
-
-{dlgtab:Optional}
-{phang}{opt stats(string)} Same list and default as raster mode.
-{phang}{opt nodata(#)} Value used as no‑data placeholder when constructing raster (default -9999). Cells with this value excluded from statistics.
+{dlgtab:NetCDF-specific options}
+{phang}{opt var(string)} Variable name in the NetCDF file to process (required for NetCDF files).
+{phang}{opt origin(numlist)} Origin coordinates (1-based) for slicing the NetCDF variable. Must be integers >0.
+{phang}{opt size(numlist)} Size of each dimension for slicing. At most 2 dimensions can have size >1 (2D grid requirement).
 
 {marker remarks}{...}
 {title:Remarks}
 
-{pstd}{bf:Choosing a mode.} If you already have a GeoTIFF, use raster mode (faster, no rasterization). If data are point/grid observations in Stata, use vector mode. Results are equivalent provided the constructed grid matches the original raster's alignment and resolution.
+{pstd}{bf:File type detection.} The command automatically detects whether the input file is a GeoTIFF (.tif/.tiff) or NetCDF (.nc) file based on the file extension and uses the appropriate processing method.
 
-{pstd}{bf:Grid assumptions (vector mode).} Points must form a regular grid. The command infers: resolution, width, height, extent. Duplicate (x,y) throw errors. Irregular spacing will yield incorrect rasterization.
+{pstd}{bf:NetCDF processing.} For NetCDF files, the command supports multi-dimensional data with automatic detection of 2D spatial grids (allowing singleton dimensions). Use {cmd:origin()} and {cmd:size()} options for slicing large datasets. At most 2 dimensions can have size >1 to maintain 2D grid requirements.
 
-{pstd}{bf:CRS handling.} Shapefile is reprojected to raster CRS (or specified CRS in vector mode). NetCDF CRS inference attempts EPSG code or WKT; falls back to WGS84 if unresolved.
+{pstd}{bf:CRS handling.} The command attempts to automatically detect CRS from raster files. If CRS is found, user-provided {cmd:crs()} is ignored with a notification. If no CRS is detected and {cmd:crs()} is not provided, an error occurs. Shapefile is reprojected to match raster CRS when needed.
 
 {pstd}{bf:Performance tips.}
 {p 8 12 2}• Limit requested statistics to those needed{p_end}
-{p 8 12 2}• Use appropriate CRS in projected meters for large area analyses to avoid distortion-driven artifacts{p_end}
+{p 8 12 2}• Use appropriate CRS in projected meters for large area analyses{p_end}
 {p 8 12 2}• Pre-filter polygons to study region before running{p_end}
+{p 8 12 2}• For large NetCDF files, use slicing with {cmd:origin()} and {cmd:size()} to process subsets{p_end}
 {p 8 12 2}• For very large rasters consider tiling externally; current command reads full needed extent{p_end}
 
 {marker examples}{...}
 {title:Examples}
 
-{bf:Raster mode}
+{bf:GeoTIFF examples}
 {phang}Nighttime lights statistics by city (sum + average):
 {phang2}{cmd:. gzonalstats DMSP-like2020.tif using hunan.shp, stats("sum avg") clear}
 
@@ -102,22 +92,18 @@
 {phang}Specify band 3 of a multi-band GeoTIFF:
 {phang2}{cmd:. gzonalstats multiband.tif using zones.shp, band(3) stats("avg std") clear}
 
-{bf:Vector-to-raster mode}
-{phang}Basic usage with WGS84 coordinates:
-{phang2}{cmd:. use temperature_grid, clear}
-{phang2}{cmd:. gzonalstats using admin_boundaries.shp, xvar(lon) yvar(lat) valuevar(temp) frame(temp_zones) crs(EPSG:4326) stats("avg min max")}
+{phang}GeoTIFF with user-specified CRS (if auto-detection fails):
+{phang2}{cmd:. gzonalstats raster.tif using polygons.shp, stats("avg min max") crs(EPSG:4326) clear}
 
-{phang}Multiple stats and custom nodata value:
-{phang2}{cmd:. use precipitation_data, clear}
-{phang2}{cmd:. gzonalstats using watersheds.shp, xvar(x) yvar(y) valuevar(rain) frame(rain_stats) crs(EPSG:4326) stats("count avg sum min max std") nodata(-999)}
+{bf:NetCDF examples}
+{phang}Basic NetCDF zonal statistics:
+{phang2}{cmd:. gzonalstats climate.nc using countries.shp, var(temperature) stats("avg min max") clear}
 
-{phang}Using a reference GeoTIFF for CRS alignment:
-{phang2}{cmd:. use nightlight_grid, clear}
-{phang2}{cmd:. gzonalstats using cities.shp, xvar(lon) yvar(lat) valuevar(lum) frame(city_lights) crs("reference_raster.tif", tif) stats("avg sum")}
+{phang}NetCDF with slicing (subset of data):
+{phang2}{cmd:. gzonalstats large_dataset.nc using regions.shp, var(precipitation) origin(1 1 100 200) size(1 1 50 50) stats("sum avg") clear}
 
-{phang}Using NetCDF file for CRS inference:
-{phang2}{cmd:. use climate_grid, clear}
-{phang2}{cmd:. gzonalstats using countries.shp, xvar(longitude) yvar(latitude) valuevar(temp) frame(country_climate) crs("climate.nc", nc) stats("avg min max std")}
+{phang}NetCDF with user-specified CRS:
+{phang2}{cmd:. gzonalstats data.nc using boundaries.shp, var(elevation) stats("avg std") crs(EPSG:3857) clear}
 
 {bf:Comparing modes}
 {phang}If you have both point grid and corresponding GeoTIFF:
