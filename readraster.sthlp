@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.0  09oct2025}{...}
+{* *! version 1.2.0  10oct2025}{...}
 {vieweralsosee "" "--"}{...}
 {vieweralsosee "Install readraster" "ssc install readraster"}{...}
 {viewerjumpto "Syntax" "readraster##syntax"}{...}
@@ -45,7 +45,7 @@ automatically handling coordinate system transformations and spatial operations.
 {dlgtab:System Requirements}
 
 {phang}
-{bf:Stata Version}: Stata 18 or later version is required
+{bf:Stata Version}: Stata 17 or later version is required
 {p_end}
 
 
@@ -126,10 +126,59 @@ The {cmd:readraster} package includes the following commands organized by functi
 {marker setup}{...}
 {title:Setup Java dependencies}
 
+{dlgtab:Java JDK Configuration}
+
+{pstd}
+{browse "Java JDK configuration requirements:"}
+{p_end}
+
+{phang2}• {bf:Stata 17}: Requires manual Java JDK 17+ installation and configuration{p_end}
+{phang2}• {bf:Stata 18+}: Uses built-in Java runtime (no additional configuration needed){p_end}
+
+{dlgtab:For Stata 17 Users: Configure Java JDK 17+}
+
+{pstd}
+If you are using Stata 17, you need to download and install Java JDK 17 or later, then configure it in Stata.
+{p_end}
+
+{dlgtab:Step 1: Download and Install Java JDK 17+}
+
+{pstd}
+Download and install Java JDK 17 or later from the official Oracle website or OpenJDK distributions:
+{p_end}
+
+{phang2}• Oracle JDK: {browse "https://www.oracle.com/java/technologies/downloads/"}{p_end}
+{phang2}• OpenJDK: {browse "https://openjdk.org/"}{p_end}
+
+{dlgtab:Step 2: Configure Java in Stata 17}
+
+{pstd}
+After installing Java JDK, configure the Java home directory in Stata by running:
+{p_end}
+
+{phang2}{cmd:. java set home "path_to_java_home_dir"}{p_end}
+
+{pstd}
+Replace {it:path_to_java_home_dir} with the actual path to your Java JDK installation directory (e.g., {cmd:"C:\Program Files\Java\jdk-17"} on Windows or {cmd:"/usr/lib/jvm/java-17-openjdk-amd64"} on Linux).
+{p_end}
+
+{pstd}
+You can verify the Java configuration by running:
+{p_end}
+
+{phang2}{cmd:. java query}{p_end}
+
+{dlgtab:For Stata 18+ Users}
+
+{pstd}
+Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
+{p_end}
+
+{dlgtab:GeoTools Library Setup}
 
 {pstd}
 Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
-Once downloaded, place this library in Stata’s adopath—or add the library’s file path to Stata’s adopath.
+Once downloaded, place this library in Stata's adopath—or add the library's file path to Stata's adopath.
 {p_end}
 
 {pstd}
