@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0  07sep2024}{...}
+{* *! version 2.0  11oct2025}{...}
 {vieweralsosee "[D] import" "mansection D import"}{...}
 {viewerjumpto "Syntax" "crsconvert##syntax"}{...}
 {viewerjumpto "Description" "crsconvert##description"}{...}
@@ -8,7 +8,7 @@
 {title:Title}
 
 {phang}
-{bf:crsconvert} {hline 2} Convert coordinates between different coordinate reference systems in the GeoTIFF file
+{bf:crsconvert} {hline 2} Convert coordinates between different coordinate reference systems
 
 {marker syntax}{...}
 {title:Syntax}
@@ -41,24 +41,27 @@ The {cmd:crsconvert} command requires Java libraries from GeoTools. Use {cmd:geo
 {opt gen(prefix_)} specifies the prefix for the two new variables that will contain the transformed coordinates. The new variables will be named {it:prefix_}x and {it:prefix_}y.
 
 {phang}
-{opt from(string, tif shp)} specifies the source coordinate reference system. It might be provided in EPSG format(e.g. "EPSG:4326"). The coordinate reference system can be provided in EPSG format (e.g., "EPSG:4326"). 
-Alternatively, users have the option to specify a GeoTIFF file (SHP file) using the {opt tif} ({opt shp}) option to denote the source of the coordinate reference system.
-This approach is highly practical, considering that the coordinate reference system sometimes may not conform to a standard EPSG format and instead contains detailed projection parameters.
-If a file is specified, the command automatically identify its coordinate reference system.
+{opt from(string)} specifies the source coordinate reference system. It can be provided in EPSG format (e.g., "EPSG:4326") or as a WKT string. 
+Alternatively, users can specify a GeoTIFF (.tif/.tiff), Shapefile (.shp), or NetCDF (.nc) file to automatically extract the coordinate reference system from the file.
 
 {phang}
-{opt to(string, tif shp)}  specifies the source coordinate reference system. It might be provided in EPSG format(e.g. "EPSG:4326"). 
-Alternatively, users have the option to specify a GeoTIFF file (SHP file) using the {opt tif} ({opt shp}) option to denote the source of the coordinate reference system. 
+{opt to(string)} specifies the target coordinate reference system. It can be provided in EPSG format (e.g., "EPSG:4326") or as a WKT string. 
+Alternatively, users can specify a GeoTIFF (.tif/.tiff), Shapefile (.shp), or NetCDF (.nc) file to automatically extract the coordinate reference system from the file. 
 
 {marker examples}{...}
 {title:Examples}
 
-{pstd}convert the coordinate system of the hunan.shp to the coordinate system of the DMSP-like2020.tif:{p_end}
-{phang2}{cmd:. spshape2dta hunan.shp, replace}{p_end}
+{pstd}Convert coordinates using EPSG codes:{p_end}
+{phang2}{cmd:. crsconvert lon lat, gen(utm_) from("EPSG:4326") to("EPSG:32633")}{p_end}
 
-{phang2}{cmd:. use "hunan.dta",clear}{p_end}
+{pstd}Convert coordinates from GeoTIFF CRS to WGS84:{p_end}
+{phang2}{cmd:. crsconvert x y, gen(wgs84_) from(dem.tif) to("EPSG:4326")}{p_end}
 
-{phang2}{cmd:. crsconvert _CX _CY, gen(alber) from(hunan.shp) to(DMSP-like2020.tif)}{p_end}
+{pstd}Convert coordinates from NetCDF CRS to Shapefile CRS:{p_end}
+{phang2}{cmd:. crsconvert lon lat, gen(projected_) from(climate_data.nc) to(boundary.shp)}{p_end}
+
+{pstd}Convert coordinates between two NetCDF files:{p_end}
+{phang2}{cmd:. crsconvert x y, gen(reproj_) from(input.nc) to(reference.nc)}{p_end}
 
 
 {title:Author}

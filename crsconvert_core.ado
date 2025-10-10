@@ -18,7 +18,7 @@ qui gen double `gen'`y' = .
 local from `from'
 local to `to'
 
-if strpos(lower("`from'"), ".tif") | strpos(lower("`from'"), ".shp") {
+if strpos(lower("`from'"), ".tif") | strpos(lower("`from'"), ".tiff") | strpos(lower("`from'"), ".shp") | strpos(lower("`from'"), ".nc") {
     removequotes, file(`from')
     local from `r(file)'
     local from = subinstr("`from'", "\", "/", .)
@@ -30,7 +30,7 @@ if strpos(lower("`from'"), ".tif") | strpos(lower("`from'"), ".shp") {
 }
 
 // 检查 to 是否是文件路径
-if strpos(lower("`to'"), ".tif") | strpos(lower("`to'"), ".shp") {
+if strpos(lower("`to'"), ".tif") | strpos(lower("`to'"), ".tiff") | strpos(lower("`to'"), ".shp") | strpos(lower("`to'"), ".nc") {
     removequotes, file(`to')
     local to `r(file)'
     local to = subinstr("`to'", "\", "/", .)
@@ -66,6 +66,9 @@ java:
 /cp gt-api-32.0.jar
 /cp gt-metadata-32.0.jar
 
+// NetCDF libraries
+/cp netcdfAll-5.9.1.jar
+
 /cp json-simple-1.1.1.jar
 /cp commons-lang3-3.15.0.jar
 /cp commons-io-2.16.1.jar
@@ -93,6 +96,11 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+// NetCDF imports
+import ucar.nc2.dataset.NetcdfDataset;
+import ucar.nc2.Variable;
+import ucar.nc2.Attribute;
 
 // Initialization method to replace the static block
 void initializeGeoTools() {
@@ -175,12 +183,16 @@ void crsconvert(String x, String y, String newx, String newy,
 CoordinateReferenceSystem parseCRS(String crsInput) throws Exception {
     try {
         // 如果输入是 GeoTIFF 文件
-        if (crsInput.toLowerCase().endsWith(".tif")) {
+        if (crsInput.toLowerCase().endsWith(".tif") || crsInput.toLowerCase().endsWith(".tiff")) {
             return readCRSFromGeoTIFF(crsInput);
         } 
         // 如果输入是 Shapefile 文件
         else if (crsInput.toLowerCase().endsWith(".shp")) {
             return readCRSFromShapefile(crsInput);
+        } 
+        // 如果输入是 NetCDF 文件
+        else if (crsInput.toLowerCase().endsWith(".nc")) {
+            return readCRSFromNetCDF(crsInput);
         } 
         // 如果输入是 EPSG 编码
         else if (crsInput.startsWith("EPSG:")) {
@@ -200,7 +212,11 @@ CoordinateReferenceSystem parseCRS(String crsInput) throws Exception {
 CoordinateReferenceSystem readCRSFromGeoTIFF(String filePath) throws Exception {
     GeoTiffReader reader = null;
     try {
-        reader = new GeoTiffReader(new File(filePath));
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new Exception("GeoTIFF file does not exist: " + filePath);
+        }
+        reader = new GeoTiffReader(file);
         return reader.getCoordinateReferenceSystem();
     } catch (Exception e) {
         throw new Exception("Failed to read CRS from GeoTIFF file: " + filePath + ". Error: " + e.getMessage(), e);
@@ -271,6 +287,62 @@ if (crs == null) {
     } finally {
         if (shapefileDataStore != null) {
             shapefileDataStore.dispose(); // 确保释放资源
+        }
+    }
+}
+
+// 从 NetCDF 文件读取 CRS
+CoordinateReferenceSystem readCRSFromNetCDF(String filePath) throws Exception {
+    NetcdfDataset ncFile = null;
+    try {
+        File ncFileObj = new File(filePath);
+        if (!ncFileObj.exists()) {
+            throw new Exception("NetCDF file does not exist: " + filePath);
+        }
+
+        ncFile = NetcdfDatasets.openDataset(filePath);
+
+        // Try to find CRS in global attributes
+        Attribute crsAttr = ncFile.findGlobalAttribute("crs_wkt");
+        if (crsAttr != null) {
+            return CRS.parseWKT(crsAttr.getStringValue());
+        }
+
+        crsAttr = ncFile.findGlobalAttribute("spatial_ref");
+        if (crsAttr != null) {
+            return CRS.parseWKT(crsAttr.getStringValue());
+        }
+
+        // Try EPSG code
+        Attribute epsgAttr = ncFile.findGlobalAttribute("epsg_code");
+        if (epsgAttr != null) {
+            return CRS.decode("EPSG:" + epsgAttr.getNumericValue().intValue(), true);
+        }
+
+        // Check variable attributes (look for the first variable that might have CRS info)
+        for (Variable var : ncFile.getVariables()) {
+            crsAttr = var.findAttribute("crs_wkt");
+            if (crsAttr != null) {
+                return CRS.parseWKT(crsAttr.getStringValue());
+            }
+
+            crsAttr = var.findAttribute("spatial_ref");
+            if (crsAttr != null) {
+                return CRS.parseWKT(crsAttr.getStringValue());
+            }
+
+            epsgAttr = var.findAttribute("epsg_code");
+            if (epsgAttr != null) {
+                return CRS.decode("EPSG:" + epsgAttr.getNumericValue().intValue(), true);
+            }
+        }
+
+        throw new Exception("No CRS information found in NetCDF file: " + filePath);
+    } catch (Exception e) {
+        throw new Exception("Failed to read CRS from NetCDF file: " + filePath + ". Error: " + e.getMessage(), e);
+    } finally {
+        if (ncFile != null) {
+            ncFile.close();
         }
     }
 }
