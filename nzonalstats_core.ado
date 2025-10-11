@@ -1,7 +1,7 @@
 cap program drop nzonalstats_core
 program define nzonalstats_core
 version 17
-syntax anything using/, [STATs(string) var(string) clear origin(numlist integer >0) size(numlist integer) crs(string)]
+syntax anything using/, [STATs(string) var(string) clear origin(numlist integer >0) size(numlist integer) crs(string) missingthresh(real -9999)]
 
 // Check if clear option is provided when data is in memory
 if "`clear'"=="" {
@@ -46,6 +46,7 @@ if !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
     // 如果是相对路径，拼接当前工作目录
     local using = "`c(pwd)'/`using'"
 }
+
 removequotes, file(`shpfile')
 local shpfile `r(file)'
 // 判断路径是否为绝对路径
@@ -74,6 +75,7 @@ if "`origin'"!="" {
         local origin0 `origin0' `=`oi'-1'
     }
 }
+
 if "`size'"=="" & "`origin'"!="" {
     local size
     local no : word count `origin'
@@ -81,6 +83,7 @@ if "`size'"=="" & "`origin'"!="" {
         local size `size' -1
     }
 }
+
 // 检查 size 元素>1的个数不能大于2
 if "`size'"!="" {
     local nsize : word count `size'
@@ -102,9 +105,10 @@ local usercrs "`crs'"
 
 // Call Java with slicing if origin specified
 if "`origin'"!="" {
-    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "`origin0'", "`size'", "`usercrs'")
-} else {
-    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "", "", "`usercrs'")
+    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "`origin0'", "`size'", "`usercrs'", "`missingthresh'")
+} 
+else {
+    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "", "", "`usercrs'", "`missingthresh'")
 }
 
 // Add variable labels in Stata code after Java execution
@@ -169,6 +173,16 @@ java:
 /cp jts-core-1.20.0.jar
 
 // These are all the imports you need for the grid geometry handling
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferFloat;
+import java.awt.image.WritableRaster;
+import java.awt.image.Raster;
+import java.awt.image.ColorModel;
+import java.awt.color.ColorSpace;
+import java.awt.image.ComponentColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.Transparency;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -240,8 +254,37 @@ public class nzonalstatics {
             }
         }
     }
+    
+    private static BufferedImage floatArrayToImage(float[][] data) {
+        int height = data.length;
+        int width = data[0].length;
+        float[] flat = new float[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                flat[y * width + x] = data[height - 1 - y][x];
+            }
+        }
+        java.awt.image.DataBuffer db = new java.awt.image.DataBufferFloat(flat, flat.length);
+        int bands = 1;
+        int[] bandOffsets = {0};
+        java.awt.image.SampleModel sm = new java.awt.image.PixelInterleavedSampleModel(
+            DataBuffer.TYPE_FLOAT, width, height, bands, width * bands, bandOffsets
+        );
+        java.awt.image.WritableRaster raster = java.awt.image.Raster.createWritableRaster(sm, db, null);
 
-    public static void main(String shpPath, String ncPath, String varName, String statsParam, String originParam, String sizeParam, String userCrs) throws Exception {
+        ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_GRAY);
+        boolean hasAlpha = false;
+        boolean isAlphaPremultiplied = false;
+        int transparency = Transparency.OPAQUE;
+        int transferType = DataBuffer.TYPE_FLOAT;
+        int[] nBits = {32};
+        java.awt.image.ColorModel cm = new ComponentColorModel(
+            cs, nBits, hasAlpha, isAlphaPremultiplied, transparency, transferType
+        );
+        return new BufferedImage(cm, raster, false, null);
+    }
+
+    public static void main(String shpPath, String ncPath, String varName, String statsParam, String originParam, String sizeParam, String userCrs, String missingThreshParam) throws Exception {
         // Declare resources outside the try block so we can close them in finally
         ShapefileDataStore shapefileDataStore = null;
         NetcdfDataset ncFile = null;
@@ -254,7 +297,7 @@ public class nzonalstatics {
         int[] size = null;
 
         if (originParam != null && !originParam.isEmpty()) {
-            String[] originStrings = originParam.split(",");
+            String[] originStrings = originParam.split("[,\\s]+");
             origin = new int[originStrings.length];
             for (int i = 0; i < originStrings.length; i++) {
                 origin[i] = Integer.parseInt(originStrings[i]);
@@ -262,7 +305,7 @@ public class nzonalstatics {
         }
 
         if (sizeParam != null && !sizeParam.isEmpty()) {
-            String[] sizeStrings = sizeParam.split(",");
+            String[] sizeStrings = sizeParam.split("[,\\s]+");
             size = new int[sizeStrings.length];
             for (int i = 0; i < sizeStrings.length; i++) {
                 size[i] = Integer.parseInt(sizeStrings[i]);
@@ -352,25 +395,47 @@ public class nzonalstatics {
             if (numDims < 2) {
                 System.out.println("Variable '" + varName + "' has " + numDims + " dimensions. Must have at least 2 dimensions.");
                 return;
+
+            
             }
 
-            // Check if it's more than 2D but with singleton dimensions
-            int spatialDims = 0;
-            for (ucar.nc2.Dimension dim : dimensions) {
-                if (dim.getLength() > 1) {
-                    spatialDims++;
+        
+            System.out.println("NetCDF variable '" + varName + "' type: " + ncVar.getDataType().toString());
+
+            Attribute fillAttr = ncVar.findAttribute("_FillValue");
+            if (fillAttr == null) fillAttr = ncVar.findAttribute("missing_value");
+            if (fillAttr != null) {
+                System.out.println("NetCDF variable '" + varName + "' missing value attribute: " + fillAttr.getNumericValue() + " (type: " + fillAttr.getDataType() + ")");
+            } else {
+                System.out.println("NetCDF variable '" + varName + "' has no _FillValue or missing_value attribute.");
+            }
+
+            Array dataArray;
+            if (origin != null && size != null && origin.length == size.length && origin.length == dimensions.size()) {
+                dataArray = ncVar.read(origin, size);
+            } else {
+                dataArray = ncVar.read();
+            }
+
+
+            // display data array shape and dimensions
+            int[] actualShape = dataArray.getShape();
+            int actualDims = actualShape.length;
+
+            int yDim = -1, xDim = -1;
+            List<Integer> spatialDims = new ArrayList<>();
+            for (int i = 0; i < actualDims; i++) {
+                if (actualShape[i] > 1) {
+                    spatialDims.add(i);
                 }
             }
-
-            if (spatialDims > 2) {
-                System.out.println("Variable '" + varName + "' has " + spatialDims + " non-singleton dimensions. Only 2D spatial data is supported.");
+            if (spatialDims.size() < 2) {
+                System.out.println("Error: Need at least 2 spatial dimensions with size > 1");
                 return;
             }
+            yDim = spatialDims.get(spatialDims.size() - 2);
+            xDim = spatialDims.get(spatialDims.size() - 1);
 
-            System.out.println("Variable '" + varName + "' has " + numDims + " dimensions, " + spatialDims + " spatial dimensions - proceeding with analysis");
-
-            // Read the variable data
-            Array dataArray = ncVar.read();
 
             // Get coordinate variables for CRS and bounds
             CoordinateReferenceSystem ncCRS = extractCRSFromNetCDF(ncFile, ncVar);
@@ -386,10 +451,75 @@ public class nzonalstatics {
                 }
             }
 
-            // Get spatial bounds from coordinate variables
-            double[] bounds = getSpatialBounds(ncFile, dimensions);
-            ReferencedEnvelope ncEnvelope = new ReferencedEnvelope(
-                bounds[0], bounds[2], bounds[1], bounds[3], ncCRS);
+
+            Variable lonVar = null, latVar = null;
+            for (Variable v : ncFile.getVariables()) {
+                String stdName = v.findAttributeString("standard_name", "");
+                String axis = v.findAttributeString("axis", "");
+                String units = v.findAttributeString("units", "");
+                String name = v.getShortName().toLowerCase();
+
+                if (lonVar == null && (
+                        "longitude".equals(stdName) ||
+                        "X".equalsIgnoreCase(axis) ||
+                        units.contains("degrees_east") ||
+                        name.contains("lon") || name.equals("x") || name.contains("long"))) {
+                    lonVar = v;
+                }
+                if (latVar == null && (
+                        "latitude".equals(stdName) ||
+                        "Y".equalsIgnoreCase(axis) ||
+                        units.contains("degrees_north") ||
+                        name.contains("lat") || name.equals("y"))) {
+                    latVar = v;
+                }
+            }
+            if (lonVar == null || latVar == null) {
+                System.out.println("Unable to automatically identify longitude/latitude variables, please check the NetCDF file!");
+                return;
+            }
+
+            // read lon/lat slices based on origin/size if provided
+            Array lonSlice, latSlice;
+            if (origin != null && size != null) {
+                int[] lonStart = new int[1];
+                int[] lonSize = new int[1];
+                lonStart[0] = origin[xDim];
+                lonSize[0] = size[xDim];
+                lonSlice = lonVar.read(lonStart, lonSize);
+
+                int[] latStart = new int[1];
+                int[] latSize = new int[1];
+                latStart[0] = origin[yDim];
+                latSize[0] = size[yDim];
+                latSlice = latVar.read(latStart, latSize);
+            } else {
+                lonSlice = lonVar.read();
+                latSlice = latVar.read();
+            }
+
+
+            double lonRes = (lonSlice.getSize() > 1) ? Math.abs(lonSlice.getDouble(1) - lonSlice.getDouble(0)) : 0.0;
+            double latRes = (latSlice.getSize() > 1) ? Math.abs(latSlice.getDouble(1) - latSlice.getDouble(0)) : 0.0;
+
+            //bounds based on pixel edges
+            double minLonEdge = lonSlice.getDouble(0) - lonRes / 2.0;
+            double maxLonEdge = lonSlice.getDouble((int)lonSlice.getSize() - 1) + lonRes / 2.0;
+            double minLatEdge = latSlice.getDouble(0) - latRes / 2.0;
+            double maxLatEdge = latSlice.getDouble((int)latSlice.getSize() - 1) + latRes / 2.0;
+
+            ReferencedEnvelope actualEnvelope = new ReferencedEnvelope(
+                minLonEdge, maxLonEdge, minLatEdge, maxLatEdge, ncCRS);
+
+            // get shp bounds
+            ReferencedEnvelope shpBounds = featureCollection.getBounds();
+
+            /* System.out.println("NetCDF bounds: " + actualEnvelope);
+            System.out.println("Shapefile bounds: " + shpBounds);
+
+            boolean intersects = actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) shpBounds);
+            System.out.println("Bounds intersection: " + intersects); */
+
 
             // Convert NetCDF array to 2D grid
             int[] shape = dataArray.getShape();
@@ -400,31 +530,124 @@ public class nzonalstatics {
             float[][] gridData = new float[height][width];
             Index index = dataArray.getIndex();
 
-            // Fill the grid data (assuming the last two dimensions are spatial)
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    // Set index for the last two dimensions
-                    index.setDim(shape.length - 2, y);
-                    index.setDim(shape.length - 1, x);
-                    gridData[y][x] = dataArray.getFloat(index);
+            boolean isDouble = false;
+            double fillValueDouble = Double.NaN;
+            float fillValueFloat = Float.NaN;
+            if (ncVar.getDataType().isFloatingPoint()) {
+                if (ncVar.getDataType().toString().equalsIgnoreCase("double")) {
+                    isDouble = true;
                 }
             }
 
+            // Fill the grid data (assuming the last two dimensions are spatial)
+            // 获取 NetCDF 缺失值
+            // Fill the grid data using a more generic approach
+            float fillValue = Float.NaN;
+            double missingThresh = Double.NaN;
+            /* Attribute fillAttr = ncVar.findAttribute("_FillValue"); */
+            if (fillAttr == null) fillAttr = ncVar.findAttribute("missing_value");
+            if (fillAttr != null) {
+                if (isDouble) {
+                    fillValueDouble = fillAttr.getNumericValue().doubleValue();
+                } else {
+                    fillValueFloat = fillAttr.getNumericValue().floatValue();
+                }
+            }
+
+            // Identify spatial dimensions
+            for (int i = 0; i < actualDims; i++) {
+                if (actualShape[i] > 1) {
+                    spatialDims.add(i);
+                }
+            }
+
+            if (spatialDims.size() < 2) {
+                System.out.println("Error: Need at least 2 spatial dimensions with size > 1");
+                return;
+            }
+
+            // Assume the last two non-singleton dimensions are spatial dimensions
+            yDim = spatialDims.get(spatialDims.size() - 2);
+            xDim = spatialDims.get(spatialDims.size() - 1);
+
+            height = actualShape[yDim];
+            width = actualShape[xDim];
+
+            gridData = new float[height][width];
+
+            int[] indices = new int[actualDims];
+
+            for (int i = 0; i < actualDims; i++) {
+                indices[i] = 0;
+            }
+
+            // Iterate over all spatial positions
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    // Set the indices for the spatial dimensions
+                    indices[yDim] = y;
+                    indices[xDim] = x;
+                    // Set the index for each dimension
+                    for (int d = 0; d < actualDims; d++) {
+                        index.setDim(d, indices[d]);
+                    }
+                    float value;
+                    if (isDouble) {
+                        double dval = dataArray.getDouble(index);
+                        boolean isMissing = false;
+                        if (!Double.isNaN(fillValueDouble)) {
+                            isMissing = Double.compare(dval, fillValueDouble) == 0;
+                        }
+                        if (!isMissing && Double.isNaN(fillValueDouble) && !Double.isNaN(missingThresh)) {
+                            isMissing = dval > missingThresh;
+                        }
+                        if (!isMissing && fillAttr == null && Double.isNaN(dval)) {
+                            isMissing = true;
+                        }
+                        if (isMissing) {
+                            value = Float.NaN;
+                        } else {
+                            value = (float) dval;
+                        }
+                    } else {
+                        float fval = dataArray.getFloat(index);
+                        boolean isMissing = false;
+                        if (!Float.isNaN(fillValueFloat)) {
+                            isMissing = Float.compare(fval, fillValueFloat) == 0;
+                        }
+                        if (!isMissing && Float.isNaN(fillValueFloat) && !Double.isNaN(missingThresh)) {
+                            isMissing = fval > missingThresh;
+                        }
+                        if (!isMissing && fillAttr == null && Float.isNaN(fval)) {
+                            isMissing = true;
+                        }
+                        if (isMissing) {
+                            value = Float.NaN;
+                        } else {
+                            value = fval;
+                        }
+                    }
+                    gridData[y][x] = value;
+                }
+            }
+
+
             // Create GridCoverage2D
             GridCoverageFactory factory = new GridCoverageFactory();
-            SampleDimension[] bands = new SampleDimension[1];
+            GridSampleDimension[] bands = new GridSampleDimension[1];
             bands[0] = new GridSampleDimension(varName);
 
-            coverage = factory.create(varName, gridData, ncEnvelope, bands, null, null);
+            BufferedImage image = floatArrayToImage(gridData);
+            coverage = factory.create(varName, image, actualEnvelope, bands, null, null);
 
             // Get coordinate systems for comparison
             CoordinateReferenceSystem rasterCRS = ncCRS;
             String rasterCRSName = rasterCRS.getName().toString();
-            System.out.println("NetCDF CRS: " + rasterCRSName);
+            /* System.out.println("NetCDF CRS: " + rasterCRSName); */
 
             CoordinateReferenceSystem vectorCRS = shapefileDataStore.getSchema().getCoordinateReferenceSystem();
             String vectorCRSName = vectorCRS.getName().toString();
-            System.out.println("Shapefile CRS: " + vectorCRSName);
+            /* System.out.println("Shapefile CRS: " + vectorCRSName); */
 
             // Check if we need to reproject
             boolean needsReprojection = !CRS.equalsIgnoreMetadata(rasterCRS, vectorCRS);
@@ -437,9 +660,6 @@ public class nzonalstatics {
                 System.out.println("Coordinate systems are compatible, no reprojection needed");
             }
 
-            // Get shapefile bounds AFTER reprojection (if any)
-            ReferencedEnvelope shpBounds = featureCollection.getBounds();
-            System.out.println("Shapefile bounds: " + shpBounds);
 
             RasterZonalStatistics process = new RasterZonalStatistics();
             SimpleFeatureCollection resultFeatures = process.execute(
@@ -465,7 +685,6 @@ public class nzonalstatics {
 
             // Get total number of features
             int totalFeatures = allFeatures.size();
-            System.out.println("Total features: " + totalFeatures);
 
             if (totalFeatures > 0) {
                 // First, examine attributes to understand the data structure
@@ -516,6 +735,7 @@ public class nzonalstatics {
                     }
                 }
 
+
                 // Set Stata dataset size
                 Data.setObsTotal(totalFeatures);
 
@@ -528,7 +748,7 @@ public class nzonalstatics {
 
                     if (value instanceof Number) {
                         Data.addVarDouble(idAttr);
-                        System.out.println("Created numeric variable: " + idAttr);
+                        /* System.out.println("Created numeric variable: " + idAttr); */
                     } else {
                         // Optimize string length based on content
                         int strLength = 32; // Default smaller length
@@ -544,7 +764,7 @@ public class nzonalstatics {
                         }
 
                         Data.addVarStr(idAttr, strLength);
-                        System.out.println("Created string variable: " + idAttr + " (length " + strLength + ")");
+                        /* System.out.println("Created string variable: " + idAttr + " (length " + strLength + ")"); */
                     }
 
                     attributeNameMap.put(idAttr, varIndex++);
