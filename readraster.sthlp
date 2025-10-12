@@ -103,10 +103,8 @@ The {cmd:readraster} package includes the following commands organized by functi
 {dlgtab:Spatial Analysis}
 
 {phang2}
-{help gzonalstats:gzonalstats} - Calculate zonal statistics from raster data in Geotiff file for areas of interest
+{help zonalstats:zonalstats} - Calculate zonal statistics from raster data in Geotiff file/NetCDF file for areas of interest
 
-{phang2}
-{help zonalstats:gzonalstats} - Calculate zonal statistics from raster data in Stata for areas of interest
 
 
 {phang2}
@@ -121,7 +119,7 @@ The {cmd:readraster} package includes the following commands organized by functi
 {help geotools_init:geotools_init} - Configurate GeoTools Java library for GeoTIFF operations
 
 {phang2}
-{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for GeoTIFF operations
+{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for NetCDF operations
 
 {marker setup}{...}
 {title:Setup Java dependencies}
@@ -177,7 +175,7 @@ Stata 18 and later versions include a compatible Java runtime environment. No ad
 {dlgtab:GeoTools Library Setup}
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:zonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
 Once downloaded, place this library in Stata's adopath—or add the library's file path to Stata's adopath.
 {p_end}
 
@@ -259,7 +257,7 @@ Read specific variable:
 {phang}
 Calculate zonal statistics:
 {p_end}
-{phang2}{cmd:. gzonalstats DMSP-like2020.tif, shpfile(admin_boundaries.shp) stats("sum avg") clear}{p_end}
+{phang2}{cmd:. zonalstats DMSP-like2020.tif, shpfile(admin_boundaries.shp) stats("sum avg") clear}{p_end}
 
 {phang}
 Match geographic datasets:
