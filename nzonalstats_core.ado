@@ -42,8 +42,8 @@ removequotes, file(`using')
 local using = subinstr(`"`using'"',"\","/",.)
 local shpfile = subinstr(`"`shpfile'"',"\","/",.)
 // 判断路径是否为绝对路径
-if !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
-    // 如果是相对路径，拼接当前工作目录
+if !regexm("`using'", "^(https?|ftp|s3|gs|/vsicurl/|/vsis3/|/vsigs/|/vsiaz/|/vsicurl_streaming/|/vsihttp/|/vsimem/|/vsizip/|/vsitar/|/vsicurl/).*") ///
+    & !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
     local using = "`c(pwd)'/`using'"
 }
 
@@ -371,9 +371,11 @@ public class nzonalstatics {
             featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
 
             // Check if NetCDF file exists
-            File ncFileObj = new File(ncPath);
-            if (!ncFileObj.exists()) {
-                System.out.println("NetCDF file does not exist: " + ncPath);
+            try {
+                ncFile = NetcdfDatasets.openDataset(ncPath);
+            } catch (Exception e) {
+                System.out.println("NetCDF file cannot be opened: " + ncPath);
+                e.printStackTrace();
                 return;
             }
 
