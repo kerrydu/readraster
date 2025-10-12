@@ -34,6 +34,7 @@ if "`download'"!=""{
 if "`plus'"!=""{
     di "Copying geotools jars to {browse `c(sysdir_plus)'/`plus'} ..."
 	pjar2plus `anything', to(`plus') jar(gt-main-32.0.jar)
+    wrtjarpath `c(sysdir_plus)'/`plus', jar(gt-main-32.0.jar) adoname(geotoolsjar)
 }
 else{
 	wrtjarpath `anything', jar(gt-main-32.0.jar) adoname(geotoolsjar)
