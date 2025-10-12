@@ -80,12 +80,13 @@ program define ncinfo
     version 17
     syntax anything,[display]
 
-    cap findfile NetCDFUtils-complete.jar, path(`"`path'"')
-    if _rc {
-        di as error "NetCDFUtils-complete.jar NOT found"
-        di as error "make sure NetCDFUtils-complete.jar exists in your adopath"
-        exit
-    }
+
+    // cap findfile NetCDFUtils-complete.jar, path(`"`path'"')
+    // if _rc {
+    //     di as error "NetCDFUtils-complete.jar NOT found"
+    //     di as error "make sure NetCDFUtils-complete.jar exists in your adopath"
+    //     exit
+    // }
 
     removequotes,file(`"`anything'"')
     local file `r(file)'
