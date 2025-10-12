@@ -47,38 +47,18 @@ if _rc {
     net install sjlatex, from(http://www.stata-journal.com/production) replace
 }
 
+set scheme sj, permanently
 **********************************************************
 
 capture log close
 log using example.log, replace
 
+**************************Example of GeoTIFF********************************
 
 ************5.1 Display the Metadata************
 
 //Display the Metadata of the GeoTIFF File
 gtiffdisp DMSP-like2020.tif
-
-//Display the Metadata of the NetCDF File
-////The developed commands can directly read nc files on the network. However, due to reasons such as network SSL authentication, the reading may fail. If this happens, you can copy the nc file to the local device and then perform the following corresponding operations.
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-ncdisp using `"`url'"'
-
-//Display variable metadata with ncdisp
-///tas variable
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-ncdisp tas using `"`url'"'
-
-///time variable
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-ncdisp time using `"`url'"'
-
-
 
 ************5.2 Import Raster Data into Stata************
 
@@ -111,48 +91,17 @@ gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') size(`n_rows' `n_co
 
 save DMSP-like2020.dta,replace
 
-
-set scheme sj, permanently
+// heatplot
 use DMSP-like2020.dta, clear
 heatplot value y x, color(Greys, reverse) level(6) xlabel(, angle(45)) 
 
 graph save gragh1, replace
 
-//Read the NetCDF file
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 
-// If reading nc files is too slow, you can opt to read local files instead.
-// local url = "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-
-ncread lon using `"`url'"', clear 
-gen n=_n 
-qui sum n if lon>=108 & lon<=115
-local lon_start = r(min)
-local lon_count = r(N)
-
-ncread lat using `"`url'"', clear 
-gen n=_n 
-qui sum n if lat>=24 & lat<=31
-local lat_start = r(min)
-local lat_count = r(N)
-
-ncread tas using `"`url'"', clear origin(1 `lat_start' `lon_start') ///
- size(-1 `lat_count' `lon_count')
- 
-gen date = time - 3650.5  + date("2050-01-01", "YMD")
-format date %td
-
-list in 1/10
-
-save "grid_all.dta", replace
-
-********5.3 Calculating Average and Total Nighttime Light Intensity for hunan********
-gzonalstats DMSP-like2020.tif using hunan.shp, stats("sum avg") clear
-list z_Name avg sum
+********5.3 Calculating Average Nighttime Light Intensity for hunan********
+zonalstats DMSP-like2020.tif using hunan.shp, stats("avg") clear
+list z_Name avg
 save "hunan_light.dta", replace
-
 
 use hunan.dta, clear
 
@@ -169,96 +118,139 @@ geoplot ///
  (area region avg, color(Greys, reverse) ///
 	level(6, quantile weight(avg))) ///
  (line region, lwidth(vthin)), ///
- legend(position(sw)) ///
- title("Average Nighttime Light Intensity")
+ legend(position(sw))
  
-graph save avg, replace
-
-geoplot ///
- (area region sum, color(Greys, reverse) ///
-	level(6, quantile weight(sum))) ///
- (line region, lwidth(vthin)), ///
- legend(position(sw)) ///
- title("Total Nighttime Light Intensity")
-
-graph save sum, replace
-
-graph combine avg.gph sum.gph
-
 graph save gragh2, replace
 
+********5.4 Calculate 80km-radius IDW light for cities********
 
-********5.4 Match cities to nearest four grid cells using matchgeop********
-use "grid_all.dta", clear
-
-rename lon ulon
-rename lat ulat
-save "grid_all_1.dta", replace
-
-keep if time==3650.5
-gen n=_n 
-save "hunan_grid.dta", replace
+use "DMSP-like2020.dta", clear
+crsconvert x y, gen(wsg84_) from(DMSP-like2020.tif) to(hunan.shp)
+gen n=_n
+save "light_china.dta", replace
 
 use "hunan_city.dta", clear
-matchgeop ORIG_FID lat lon using hunan_grid.dta, neighbors(n ulat ulon) nearcount(4) gen(distance) bearing(angle)
+matchgeop ORIG_FID lat lon using light_china.dta, neighbors(n wsg84_y wsg84_x) within(80) gen(distance)
 
-merge m:1 n using hunan_grid.dta, keep(3)
+merge m:1 n using light_china.dta, keep(3)
 drop _merge
-save "hunan_origin.dta", replace
 
-drop time date
-joinby ulat ulon using grid_all_1.dta
+drop if value==.
+gen weight  = 1/distance
+gen weighted_light = value * weight
+bysort city: egen sum_weighted_light = total(weighted_light)
+bysort city: egen total_weight = total(weight)
+gen idw_light = sum_weighted_light / total_weight
 
-sort ORIG_FID date 
-list city distance angle date tas in 1/10
+duplicates drop city, force
 
-///Diagram of azimuthal angle
-use "hunan_origin.dta", clear
-keep if city == "Changsha"
+///IDW interpolated light distributions in Hunan
+rename city Name
+merge m:1 Name using hunan.dta
 
-sort angle
-gen id=_n
+save "hunan_light.dta", replace
 
-local R = 6371 
-gen lat_rad = lat * (_pi/180)  
+geoframe create region ///
+   "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+   shp(hunan_shp.dta) ///
+   replace
 
-gen delta_lat = (distance / `R') * (180/_pi)  
-gen delta_lon = (distance / (`R' * cos(lat_rad))) * (180/_pi)  
-
-expand 90
-bysort n: gen t = _n - 1
-gen theta = (angle * t/89) * (_pi/180)  
-
-gen arc_lat = lat + delta_lat * cos(theta)
-gen arc_lon = lon + delta_lon * sin(theta)
-
-bysort n: gen label_theta = (angle/2) * (_pi/180)
-gen label_lat = lat + delta_lat * cos(label_theta)
-gen label_lon = lon + delta_lon * sin(label_theta)
-replace label_lat = lat + delta_lat * 0.7 * cos(label_theta) if id == 3
-replace label_lon = lon + delta_lon * 0.7 * sin(label_theta) if id == 3
-
-gen latlon_label = "(" + string(lat, "%8.2f") + "°N, " + string(lon, "%8.2f") + "°E)"
-gen ulatlon_label = "(" + string(ulat, "%8.2f") + "°N, " + string(ulon, "%8.2f") + "°E)"
-gen angle_label = string(angle, "%8.2f") + "{&degree}"
-
-twoway pcarrowi 28.15 113.15307 28.52 113.15307 ///
-    || pcarrow lat lon ulat ulon ///
-    || scatter lat lon if t == 1, msymbol(triangle) mlabel(latlon_label) mcolor(black) mlabcolor(black) mlabpos(9) mlabgap(0.8) mlabsize(small) ///
-    || scatter ulat ulon if t == 1 & (ulat == 28.125), msymbol(circle)  mlabel(ulatlon_label) mlabcolor(black) mlabpos(6) mlabgap(0.8) mlabsize(small) ///
-    || scatter ulat ulon if t == 1 & (ulat == 28.375), msymbol(circle) mlabel(ulatlon_label) mlabcolor(black) mlabpos(12) mlabgap(0.8) mlabsize(small) ///
-    || line arc_lat arc_lon if id == 1, lpattern(dot)  ///
-    || line arc_lat arc_lon if id == 2, lpattern(dot) ///
-    || line arc_lat arc_lon if id == 3, lpattern(dot) ///
-    || line arc_lat arc_lon if id == 4, lpattern(dot) ///
-    || scatter label_lat label_lon, mlabel(angle_label) msymbol(i) mlabcolor(black) mlabsize(small) ///
-    xscale(off noline) yscale(off noline) xlabel(, nogrid noticks) ylabel(, nogrid noticks) ///
-    aspect(1) legend(off)
+geoplot ///
+  (area region idw_light , color(Greys, reverse) ///
+  level(6, quantile weight(idw_light))) ///
+  (line region, lwidth(vthin)), ///
+  legend(position(sw))
 
 graph save gragh3, replace
-	
-	
-********5.5 Calculate 80km-radius IDW temperatures for cities********
+
+**************************Example of NetCDF********************************
+
+************6.1 Display the Metadata************
+
+//Display the Metadata of the NetCDF File
+////The developed commands can directly read nc files on the network. However, due to reasons such as network SSL authentication, the reading may fail. If this happens, you can copy the nc file to the local device and then perform the following corresponding operations.
+local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+ncdisp using `"`url'"'
+
+//Display variable metadata with ncdisp
+///tas variable
+ncdisp tas using `url'
+
+///time variable
+ncdisp time using `url'
+
+************6.2 Import Raster Data into Stata************
+
+//Read the NetCDF file
+local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+
+ncread lon using `url', clear 
+gen n=_n 
+qui sum n if lon>=108 & lon<=115
+local lon_start = r(min)
+local lon_count = r(N)
+
+ncread lat using `url', clear 
+gen n=_n 
+qui sum n if lat>=24 & lat<=31
+local lat_start = r(min)
+local lat_count = r(N)
+
+ncread tas using `url', clear origin(1 `lat_start' `lon_start') ///
+ size(-1 `lat_count' `lon_count')
+ 
+gen date = time - 3650.5  + date("2050-01-01", "YMD")
+format date %td
+
+list in 1/10
+
+save "grid_all.dta", replace
+
+********6.3 Calculating Average temperature for hunan********
+// local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+//             "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+//             "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+//			
+// ncread lon using `url', clear 
+// gen n=_n 
+// qui sum n if lon>=108 & lon<=115
+// local lon_start = r(min)
+// local lon_count = r(N)
+//
+// ncread lat using `url', clear 
+// gen n=_n 
+// qui sum n if lat>=24 & lat<=31
+// local lat_start = r(min)
+// local lat_count = r(N)
+
+zonalstats `url' using "hunan.shp", var(tas) stats(avg) origin(1 `lat_start' `lon_start') size(1 `lat_count' `lon_count') crs(EPSG:4326) clear
+
+save "hunan_temp.dta", replace
+
+use hunan.dta, clear
+
+rename Name z_Name  
+merge 1:1 z_Name using hunan_temp.dta,nogen
+save hunan_temp.dta, replace
+
+geoframe create region ///
+ "hunan_temp.dta", id(_ID) centroids(_CX _CY) ///
+ shp(hunan_shp.dta) ///
+ replace
+
+geoplot ///
+ (area region avg, color(Greys) ///
+	level(6, quantile weight(avg))) ///
+ (line region, lwidth(vthin)), ///
+ legend(position(sw))
+
+graph save gragh4, replace
+
+********6.4 Calculate 80km-radius IDW temperatures for cities********
 use "grid_all.dta", clear
 rename lon ulon
 rename lat ulat
@@ -323,5 +315,7 @@ foreach d of local dates {
 }
 
 graph combine Temperature(202500101).gph Temperature(202500701).gph
-graph save gragh4, replace
+graph save gragh5, replace
+
+
 log close
