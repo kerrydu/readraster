@@ -198,6 +198,8 @@ public class zonalstatics {
         SimpleFeatureIterator featureIterator = null;
         SimpleFeatureCollection featureCollection = null;
         
+        String rasterCRSName = "Unknown CRS"; // 先声明
+
         try {
             // Disable excessive logging
             Logger.getGlobal().setLevel(Level.SEVERE);
@@ -269,13 +271,14 @@ public class zonalstatics {
             // Get coordinate systems for comparison
             CoordinateReferenceSystem rasterCRS = reader.getCoordinateReferenceSystem();
             if (rasterCRS != null) {
-                String rasterCRSName = rasterCRS.getName().toString();
+                rasterCRSName = rasterCRS.getName().toString(); // 赋值
                 System.out.println("GeoTIFF CRS detected: " + rasterCRSName + ". User-provided CRS is ignored.");
-                System.out.println("Raster CRS WKT: " + rasterCRS.toWKT());
+                /* System.out.println("Raster CRS WKT: " + rasterCRS.toWKT()); */
             } else {
                 if (userCrs != null && !userCrs.trim().isEmpty()) {
                     System.out.println("GeoTIFF CRS not detected. Using user-provided CRS: " + userCrs);
                     rasterCRS = CRS.decode(userCrs, true);
+                    rasterCRSName = rasterCRS.getName().toString(); // 这里也赋值
                 } else {
                     System.out.println("Error: GeoTIFF file does not contain CRS information and no CRS was provided. Please specify a CRS using the crs() option.");
                     return;
@@ -290,7 +293,7 @@ public class zonalstatics {
             
             
             System.out.println("Shapefile CRS: " + vectorCRSName);
-            System.out.println("Vector CRS WKT: " + vectorCRS.toWKT());
+            /* System.out.println("Vector CRS WKT: " + vectorCRS.toWKT()); */
             
             
             // Check if we need to reproject
@@ -312,7 +315,7 @@ public class zonalstatics {
             GeneralParameterValue[] readParams = null;
 
             if (shpBounds != null && !shpBounds.isEmpty()) {
-                System.out.println("Optimizing raster read to only cover shapefile extent");
+                /* System.out.println("Optimizing raster read to only cover shapefile extent"); */
                 
                 try {
                     // Get the raster extent first to ensure we don't request outside its bounds
