@@ -27,7 +27,7 @@ if _rc{
     cap findfile path_ncreadjar.ado 
     if _rc {
         di as error "jar path NOT specified, use netcdf_init for setting up"
-        disp "see " `"{view "netcdf_init.sthlp":help netcdf_init}"'
+        disp "see " `"{help netcdf_init:help netcdf_init}"'
         exit
         
     }
@@ -39,7 +39,7 @@ if _rc{
     if _rc {
         di as error "Missing Java dependencies, netcdfAll-5.9.1.jar NOT found"
         di as error "make sure netcdfAll-5.9.1.jar exists in your specified directory"
-		disp "see " `"{view "netcdf_init.sthlp":help netcdf_init}"' " for setting up"
+		disp "see " `"{help netcdf_init:help netcdf_init}"' " for setting up"
         exit
     }
 
