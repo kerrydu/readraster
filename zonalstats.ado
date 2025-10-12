@@ -48,7 +48,7 @@ if `rc'{
     capture which path_geotoolsjar
     if _rc {
         di as error "Missing Java dependencies"
-        disp "see " `"{view "geotools_init.sthlp":help geotools_init}"' 
+        disp "see " `"{help geotools_init:help geotools_init}"' 
         exit 198
     }
 
@@ -61,7 +61,7 @@ if `rc'{
 	    if _rc {
         di as error "Missing Java dependencies, `jar' NOT found"
         di as error "make sure `jar' exists in your specified directory"
-		disp "see " `"{view "geotools_init.sthlp":help geotools_init}"' " for setting up"
+		disp "see " `"{help geotools_init:help geotools_init}"' " for setting up"
         exit
       }
     
