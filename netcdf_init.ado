@@ -31,6 +31,7 @@ if "`download'"!=""{
 if "`plus'"!=""{
 	di "Copying netcdfAll-5.9.1.jar to {browse `c(sysdir_plus)'/`plus'} ..."
 	pjar2plus `anything'/netcdfAll-5.9.1.jar, to(`plus')
+	wrtjarpath `c(sysdir_plus)'/`plus', jar(netcdfAll-5.9.1.jar) adoname(ncreadjar)
 }
 else{
 	wrtjarpath `anything', jar(netcdfAll-5.9.1.jar) adoname(ncreadjar)
