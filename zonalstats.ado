@@ -7,17 +7,19 @@ checkdependencies
 
 syntax anything using/, [*]
 
-if strmatch(lower(`"`anything'"'), "*.tif") | strmatch(lower(`"`anything'"'), "*.tiff") {
+removequotes, file(`anything')
+local raster = r(file)
+
+if strmatch(lower(`"`raster'"'), "*.tif") | strmatch(lower(`"`raster'"'), "*.tiff") {
     gzonalstats_core `0'
 }
-else if strmatch(lower(`"`anything'"'), "*.nc"){
+else if strmatch(lower(`"`raster'"'), "*.nc"){
     nzonalstats_core `0'
 }
 else{
-    di as error `"`anything'"' " is not a supported raster file. Supported formats are GeoTIFF (*.tif, *.tiff) and NetCDF (*.nc)."
+    di as error `"`raster'"' " is not a supported raster file. Supported formats are GeoTIFF (*.tif, *.tiff) and NetCDF (*.nc)."
     exit 198
 }
-
 
 
 end
@@ -68,4 +70,11 @@ if `rc'{
     qui adopath ++ `"`path'"'
 }
 
+end
+
+cap program drop removequotes
+program define removequotes,rclass
+    version 16
+    syntax, file(string) 
+    return local file `file'
 end
