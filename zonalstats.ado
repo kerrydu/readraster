@@ -1,13 +1,26 @@
+*! version 3.0.1 2025-10-08
 cap program drop zonalstats
 program define zonalstats
-version 17.0
+version 17
 
 checkdependencies
-zonalstats_core `0'
+
+syntax anything using/, [*]
+
+if strmatch(lower(`"`anything'"'), "*.tif") | strmatch(lower(`"`anything'"'), "*.tiff") {
+    gzonalstats_core `0'
+}
+else if strmatch(lower(`"`anything'"'), "*.nc"){
+    nzonalstats_core `0'
+}
+else{
+    di as error `"`anything'"' " is not a supported raster file. Supported formats are GeoTIFF (*.tif, *.tiff) and NetCDF (*.nc)."
+    exit 198
+}
+
+
 
 end
-
-
 
 
 
@@ -56,4 +69,3 @@ if `rc'{
 }
 
 end
-
