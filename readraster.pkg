@@ -25,8 +25,8 @@ f gtiffread_core.ado
 f gtiffwrite.ado
 f gtiffwrite.sthlp
 f gtiffwrite_core.ado
-f gzonalstats.ado
-f gzonalstats.sthlp
+f zonalstats.ado
+f zonalstats.sthlp
 f gzonalstats_core.ado
 f matchgeop.ado
 f matchgeop.sthlp
