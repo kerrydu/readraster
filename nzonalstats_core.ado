@@ -1,7 +1,7 @@
 cap program drop nzonalstats_core
 program define nzonalstats_core
 version 17
-syntax anything using/, [STATs(string) var(string) clear origin(numlist integer >0) size(numlist integer) crs(string) missingthresh(real -9999)]
+syntax anything using/, [STATs(string) var(string) clear origin(numlist integer >0) size(numlist integer) crs(string)]
 
 // Check if clear option is provided when data is in memory
 if "`clear'"=="" {
@@ -105,10 +105,10 @@ local usercrs "`crs'"
 
 // Call Java with slicing if origin specified
 if "`origin'"!="" {
-    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "`origin0'", "`size'", "`usercrs'", "`missingthresh'")
+    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "`origin0'", "`size'", "`usercrs'")
 } 
 else {
-    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "", "", "`usercrs'", "`missingthresh'")
+    java: nzonalstatics.main("`shpfile'", "`ncfile'", "`var'", "`stats'", "", "", "`usercrs'")
 }
 
 // Add variable labels in Stata code after Java execution
@@ -284,7 +284,7 @@ public class nzonalstatics {
         return new BufferedImage(cm, raster, false, null);
     }
 
-    public static void main(String shpPath, String ncPath, String varName, String statsParam, String originParam, String sizeParam, String userCrs, String missingThreshParam) throws Exception {
+    public static void main(String shpPath, String ncPath, String varName, String statsParam, String originParam, String sizeParam, String userCrs) throws Exception {
         // Declare resources outside the try block so we can close them in finally
         ShapefileDataStore shapefileDataStore = null;
         NetcdfDataset ncFile = null;
@@ -541,11 +541,6 @@ public class nzonalstatics {
                 }
             }
 
-            // Fill the grid data (assuming the last two dimensions are spatial)
-            // 获取 NetCDF 缺失值
-            // Fill the grid data using a more generic approach
-            float fillValue = Float.NaN;
-            double missingThresh = Double.NaN;
             /* Attribute fillAttr = ncVar.findAttribute("_FillValue"); */
             if (fillAttr == null) fillAttr = ncVar.findAttribute("missing_value");
             if (fillAttr != null) {
@@ -600,9 +595,6 @@ public class nzonalstatics {
                         if (!Double.isNaN(fillValueDouble)) {
                             isMissing = Double.compare(dval, fillValueDouble) == 0;
                         }
-                        if (!isMissing && Double.isNaN(fillValueDouble) && !Double.isNaN(missingThresh)) {
-                            isMissing = dval > missingThresh;
-                        }
                         if (!isMissing && fillAttr == null && Double.isNaN(dval)) {
                             isMissing = true;
                         }
@@ -616,9 +608,6 @@ public class nzonalstatics {
                         boolean isMissing = false;
                         if (!Float.isNaN(fillValueFloat)) {
                             isMissing = Float.compare(fval, fillValueFloat) == 0;
-                        }
-                        if (!isMissing && Float.isNaN(fillValueFloat) && !Double.isNaN(missingThresh)) {
-                            isMissing = fval > missingThresh;
                         }
                         if (!isMissing && fillAttr == null && Float.isNaN(fval)) {
                             isMissing = true;
