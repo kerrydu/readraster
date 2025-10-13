@@ -228,7 +228,7 @@ save "grid_all.dta", replace
 // local lat_count = r(N)
 
 zonalstats `url' using "hunan.shp", var(tas) stats(avg) origin(1 `lat_start' `lon_start') size(1 `lat_count' `lon_count') crs(EPSG:4326) clear
-
+replace avg = avg - 273.15
 save "hunan_temp.dta", replace
 
 use hunan.dta, clear
