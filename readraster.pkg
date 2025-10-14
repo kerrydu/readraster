@@ -22,9 +22,6 @@ f gtiffdisp_core.ado
 f gtiffread.ado
 f gtiffread.sthlp
 f gtiffread_core.ado
-f gtiffwrite.ado
-f gtiffwrite.sthlp
-f gtiffwrite_core.ado
 f zonalstats.ado
 f zonalstats.sthlp
 f gzonalstats_core.ado
@@ -47,7 +44,6 @@ f hunan.prj
 f hunan.shp
 f hunan.shx
 f hunan_city.dta
-f hunan.nc
 f setup.do
 f example.do
 
