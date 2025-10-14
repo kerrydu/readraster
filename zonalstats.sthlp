@@ -144,4 +144,5 @@ Run {cmd:netcdf_init} to configure the netCDF-Java library path (pointing to net
 
 {title:Also see}
 {psee}
-Online: {help geotools_init}, {help netcdf_init}{p_end}
+Online: {help geotools_init}, {help netcdf_init}
+{p_end}
