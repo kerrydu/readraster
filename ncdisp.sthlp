@@ -56,10 +56,12 @@ local
 {title:Examples}
 
 {pstd}Display the meta information of the entrie NetCDF file:{p_end}
-{phang2}{cmd:. ncdisp using "hunan.nc"}{p_end}
+{phang2}{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{p_end}
+{phang2}{cmd:. ncdisp using `url'}{p_end}
 
 {pstd}Display the meta information of the variable:{p_end}
-{phang2}{cmd:. ncdisp tas using "hunan.nc"}{p_end}
+{phang2}{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{p_end}
+{phang2}{cmd:. ncdisp tas using `url'}{p_end}
 
 {title:Author}
 
@@ -87,5 +89,5 @@ local
 {title:Also see}
 
 {psee}
-Online:  {help ncread}
+Online: {help netcdf_init} {help ncread}
 {p_end}
