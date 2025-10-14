@@ -34,7 +34,7 @@ The {cmd:geotools_init} command is used to downloads, installs, and configures t
 GeoTools is an open source Java library that provides tools for geospatial data manipulation.
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:crsconvert}, and {cmd:gzonalstats}, you first need to download the GeoTools Version 32.0 Java library. Once downloaded, place this library in Stata’s adopath — or add the library’s file path to Stata’s adopath. 
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:crsconvert}, and {cmd:zonalstats}, you first need to download the GeoTools Version 32.0 Java library. Once downloaded, place this library in Stata’s adopath — or add the library’s file path to Stata’s adopath. 
 
 {pstd}
 Users only need to initialize the Java dependencies upon their first use. And if the files in "geotools-32.0/lib" are moved, the setup process will need to be repeated.
@@ -68,7 +68,7 @@ Users only need to initialize the Java dependencies upon their first use. And if
 {title:Also see}
 
 {psee}
-Online:  {help gtiffdisp}, {help gtiffread}, {help gzonalstats}, {help crsconvert}
+Online:  {help gtiffdisp}, {help gtiffread}, {help zonalstats}, {help crsconvert}
 {p_end}
 
 
