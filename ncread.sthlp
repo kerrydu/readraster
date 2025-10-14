@@ -33,6 +33,12 @@
 {pstd}
 The {cmd:ncread} command is used to read data for a specified variable from a NetCDF file into Stata. It can read the entire variable or a specified section of data. If varname is not specified, ncread displays the meta information of the NetCDF file.
 
+{marker dependencies}{...}
+{title:Dependencies}
+
+{pstd}
+The {cmd:ncread} command requires the netcdfAll-5.9.1.jar. Use {cmd:netcdf_init} for setting up.
+
 
 {marker options}{...}
 {title:Options}
