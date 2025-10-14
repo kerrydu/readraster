@@ -22,7 +22,7 @@
 {p 8 17 2}{cmd:zonalstats} {it:rasterfilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} [{opt band(#)} {opt clear} {opt crs(string)}]{p_end}
 
 {pstd}For NetCDF files:{p_end}
-{p 8 17 2}{cmd:zonalstats} {it:netcdffilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} {opt var(string)} [{opt clear} {opt origin(numlist)} {opt size(numlist)} {opt crs(string)}]{p_end}
+{p 8 17 2}{cmd:zonalstats} {it:rasterfilename} {cmd:using} {it:shapefile}{cmd:,} {opt stats(string)} {opt var(string)} [{opt clear} {opt origin(numlist)} {opt size(numlist)} {opt crs(string)}]{p_end}
 
 {pstd}{it:rasterfilename} can be a GeoTIFF (.tif or .tiff) or NetCDF (.nc) file. The command automatically detects the file type and uses the appropriate processing method.{p_end}
 
@@ -47,15 +47,22 @@
 
 {title:Dependencies}
 
-{pstd}All modes require GeoTools Java dependencies; see {help geotools_init}.{p_end} 
+{pstd}
+The {cmd:crsconvert} command requires Java libraries from GeoTools and netCDF-Java.
+
+{phang}
+Run {cmd:geotools_init} to configure the GeoTools library path.
+
+{phang}
+Run {cmd:netcdf_init} to configure the netCDF-Java library path (pointing to netcdfAll-5.9.1.jar).
 
 {marker rasteropts}{...}
 {title:Options}
 
 {dlgtab:Common options}
-{pstd}{opt stats(string)} Statistics to compute; default {cmd:avg}. Any space‑separated subset of {cmd:count avg min max std sum}. Invalid names produce an error.{p_end}
+{pstd}{opt stats(string)} Statistics to compute; default {cmd:avg}. Any space separated subset of {cmd:count avg min max std sum}. Invalid names produce an error.{p_end}
 {pstd}{opt clear} Clear current data in memory before loading results (required if data present).{p_end}
-{pstd}{opt crs(string)} Coordinate reference system for the raster data. If the raster file contains CRS information, this option is ignored and a message is displayed. If no CRS is detected in the file and this option is not provided, an error occurs.{p_end}
+{pstd}{opt crs(string)} Coordinate reference system for the raster data. If the raster file contains CRS information, this option is ignored and a message is displayed. {p_end}
 
 {dlgtab:GeoTIFF-specific options}
 {pstd}{opt band(#)} Band index (1-based) for multi-band GeoTIFF. Default 1; must be >=1.{p_end}
@@ -84,30 +91,22 @@
 {marker examples}{...}
 {title:Examples}
 
-{pstd}{bf:GeoTIFF examples}{p_end}
 {phang}Nighttime lights statistics by city (sum + average):{p_end}
 {phang2}{cmd:. zonalstats DMSP-like2020.tif using hunan.shp, stats("sum avg") clear}{p_end}
 
-{phang}Single statistic (mean) default:{p_end}
-{phang2}{cmd:. zonalstats nl2022.tif using provinces.shp, clear}{p_end}
-
-{phang}Specify band 3 of a multi-band GeoTIFF:{p_end}
-{phang2}{cmd:. zonalstats multiband.tif using zones.shp, band(3) stats("avg std") clear}{p_end}
-
-{phang}GeoTIFF with user-specified CRS (if auto-detection fails):{p_end}
-{phang2}{cmd:. zonalstats raster.tif using polygons.shp, stats("avg min max") crs(EPSG:4326) clear}{p_end}
-
-{pstd}{bf:NetCDF examples}{p_end}
-{phang}Basic NetCDF zonal statistics:{p_end}
-{phang2}{cmd:. zonalstats climate.nc using countries.shp, var(temperature) stats("avg min max") clear}{p_end}
-
 {phang}NetCDF with slicing (subset of data):{p_end}
-{phang2}{cmd:. zonalstats large_dataset.nc using regions.shp, var(precipitation) origin(1 1 100 200) size(1 1 50 50) stats("sum avg") clear}{p_end}
-
-{phang}NetCDF with user-specified CRS:{p_end}
-{phang2}{cmd:. zonalstats data.nc using boundaries.shp, var(elevation) stats("avg std") crs(EPSG:3857) clear}{p_end}
-
-
+{phang2}{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{p_end}
+{phang2}{cmd:. ncread lon using `url'}{p_end}
+{phang2}{cmd:. gen n=_n}{p_end}
+{phang2}{cmd:. qui sum n if lon>=108 & lon<=115}{p_end}
+{phang2}{cmd:. local lon_start = r(min)}{p_end}
+{phang2}{cmd:. local lon_count = r(N)}{p_end}
+{phang2}{cmd:. ncread lat using `url', clear}{p_end}
+{phang2}{cmd:. gen n=_n}{p_end}
+{phang2}{cmd:. qui sum n if lat>=24 & lat<=31}{p_end}
+{phang2}{cmd:. local lat_start = r(min)}{p_end}
+{phang2}{cmd:. local lat_count = r(N)}{p_end}
+{phang2}{cmd:. zonalstats `url' using "hunan.shp", var(tas) stats(avg) origin(1 `lat_start' `lon_start') size(1 `lat_count' `lon_count') crs(EPSG:4326) clear}{p_end}
 
 {marker results}{...}
 {title:Stored results}
@@ -126,7 +125,7 @@
 {synoptline}
 {p2colreset}{...}
 
-{pstd}Each observation = one polygon zone. Statistics only include non‑nodata pixels.{p_end}
+{pstd}Each observation = one polygon zone. Statistics will not include nodata pixels.{p_end}
 
 {hline}
 {title:Author}
@@ -145,5 +144,4 @@
 
 {title:Also see}
 {psee}
-Online: {help geotools_init}, {help matchgeop}, {help gtiffdisp}, {help gtiffread}{p_end}
-
+Online: {help geotools_init}, {help netcdf_init}{p_end}
