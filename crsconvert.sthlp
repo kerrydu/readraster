@@ -30,8 +30,13 @@ The {cmd:crsconvert} command converts coordinates from one coordinate reference 
 {title:Dependencies}
 
 {pstd}
-The {cmd:crsconvert} command requires Java libraries from GeoTools. Use {cmd:geotools_init} for setting up.
+The {cmd:crsconvert} command requires Java libraries from GeoTools and netCDF-Java.
 
+{phang}
+Run {cmd:geotools_init} to configure the GeoTools library path.
+
+{phang}
+Run {cmd:netcdf_init} to configure the netCDF-Java library path (pointing to netcdfAll-5.9.1.jar).
 
 {marker options}{...}
 {title:Options}
@@ -51,17 +56,12 @@ Alternatively, users can specify a GeoTIFF (.tif/.tiff), Shapefile (.shp), or Ne
 {marker examples}{...}
 {title:Examples}
 
-{pstd}Convert coordinates using EPSG codes:{p_end}
-{phang2}{cmd:. crsconvert lon lat, gen(utm_) from("EPSG:4326") to("EPSG:32633")}{p_end}
+{pstd}convert the coordinate system of the hunan.shp to the coordinate system of the DMSP-like2020.tif:{p_end}
+{phang2}{cmd:. spshape2dta hunan.shp, replace}{p_end}
 
-{pstd}Convert coordinates from GeoTIFF CRS to WGS84:{p_end}
-{phang2}{cmd:. crsconvert x y, gen(wgs84_) from(dem.tif) to("EPSG:4326")}{p_end}
+{phang2}{cmd:. use "hunan.dta",clear}{p_end}
 
-{pstd}Convert coordinates from NetCDF CRS to Shapefile CRS:{p_end}
-{phang2}{cmd:. crsconvert lon lat, gen(projected_) from(climate_data.nc) to(boundary.shp)}{p_end}
-
-{pstd}Convert coordinates between two NetCDF files:{p_end}
-{phang2}{cmd:. crsconvert x y, gen(reproj_) from(input.nc) to(reference.nc)}{p_end}
+{phang2}{cmd:. crsconvert _CX _CY, gen(alber) from(hunan.shp) to(DMSP-like2020.tif)}{p_end}
 
 
 {title:Author}
@@ -82,4 +82,9 @@ Alternatively, users can specify a GeoTIFF (.tif/.tiff), Shapefile (.shp), or Ne
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn
 
+{title:Also see}
+
+{psee}
+Online:  {help geotools_init}, {help netcdf_init}, {help gtiffread}, {help ncread}
+{p_end}
 
