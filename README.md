@@ -8,6 +8,7 @@
 
 ```stata
 net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
+net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
 ```
 
 ## Java Environment and Dependencies
