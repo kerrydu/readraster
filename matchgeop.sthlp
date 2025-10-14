@@ -83,61 +83,73 @@
 {title:Examples}
 
 {phang}
-Match datasets using nearest neighbors within 10 km:
+Match datasets using nearest neighbors within 80 km:
 
 {p 12 16 2}
-{cmd:. ncread tas using "hunan.nc", clear}{break}
+{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{break}
+
 
 {p 12 16 2}
-{cmd:. gen n=_n}{break}
-
-{p 12 16 2}
-{cmd:. save "hunan_grid.dta", replace}{break}
-
-{p 12 16 2}
-{cmd:. use "hunan_city.dta", clear}{break}
-
-{p 12 16 2}
-{cmd:. matchgeop ORIG_FID lat lon using hunan_grid.dta, neighbors(n lat lon) within(10) gen(distance)}{break}
-
-{phang}
-Match datasets using 5 nearest neighbors within 5 miles:
-
-{p 12 16 2}
-{cmd:. ncread tas using "hunan.nc", clear}{break}
+{cmd:. ncread lon using `url', clear }{break}
 
 {p 12 16 2}
 {cmd:. gen n=_n}{break}
 
 {p 12 16 2}
-{cmd:. save "hunan_grid.dta", replace}{break}
+{cmd:. qui sum n if lon>=108 & lon<=115}{break}
 
 {p 12 16 2}
-{cmd:. use "hunan_city.dta", clear}{break}
+{cmd:. local lon_start = r(min)}{break}
 
 {p 12 16 2}
-{cmd:. matchgeop ORIG_FID lat lon using hunan_grid.dta, neighbors(n lat lon) within(5) mile nearcount(5) gen(distance) bearing(angle)}{break}
-
-{phang}
-Process the dataset in 5 parts:
+{cmd:. local lon_count = r(N)}{break}
 
 {p 12 16 2}
-{cmd:. ncread tas using "hunan.nc", clear}{break}
+{cmd:. ncread lat using `url', clear }{break}
 
 {p 12 16 2}
 {cmd:. gen n=_n}{break}
 
 {p 12 16 2}
-{cmd:. save "hunan_grid.dta", replace}{break}
+{cmd:. qui sum n if lat>=24 & lat<=31}{break}
+
+{p 12 16 2}
+{cmd:. local lat_start = r(min)}{break}
+
+{p 12 16 2}
+{cmd:. local lat_count = r(N)}{break}
+
+{p 12 16 2}
+{cmd:. ncread tas using `url', clear origin(1 `lat_start' `lon_start') size(-1 `lat_count' `lon_count')}{break}
+
+{p 12 16 2}
+{cmd:. gen date = time - 3650.5  + date("2050-01-01", "YMD")}{break}
+
+{p 12 16 2}
+{cmd:. format date %td}{break}
+
+{p 12 16 2}
+{cmd:. rename lon ulon}{break}
+
+{p 12 16 2}
+{cmd:. rename lat ulat}{break}
+
+{p 12 16 2}
+{cmd:. gen n=_n }{break}
+
+{p 12 16 2}
+{cmd:. save "grid_all.dta", replace}{break}
 
 {p 12 16 2}
 {cmd:. use "hunan_city.dta", clear}{break}
 
 {p 12 16 2}
-{cmd:. matchgeop ORIG_FID lat lon using hunan_grid.dta, neighbors(n lat lon) within(10) gen(distance) nsplit(5)}{break}
+{cmd:. matchgeop ORIG_FID lat lon using grid_all.dta, neighbors(n ulat ulon) within(80) gen(distance)}{break}
+
+{p 12 16 2}
+{cmd:. merge m:1 n using grid_all.dta, keep(3)}{break}
 
 {hline}
-
 
 {title:Author}
 
@@ -157,3 +169,7 @@ Process the dataset in 5 parts:
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn
 
+{title:Also see}
+{psee}
+Online: {help gtiffread}, {help ncread}
+{p_end}
