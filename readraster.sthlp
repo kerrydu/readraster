@@ -48,7 +48,6 @@ automatically handling coordinate system transformations and spatial operations.
 {bf:Stata Version}: Stata 17 or later version is required
 {p_end}
 
-
 {marker installization}{...}
 {title:Installization}
 
@@ -84,28 +83,24 @@ The {cmd:readraster} package includes the following commands organized by functi
 {dlgtab:GeoTIFF Operations}
 
 {phang2}
-{help gtiffread:gtiffread} - Read pixel values and coordinates from GeoTIFF files
-
-{phang2}
 {help gtiffdisp:gtiffdisp} - Display metadata information from GeoTIFF files
 
 {phang2}
-{help gtiffwrite:gtiffwrite} - Write Stata grid data to GeoTIFF raster file
+{help gtiffread:gtiffread} - Read pixel values and coordinates from GeoTIFF files
 
 {dlgtab:NetCDF Operations}
 
 {phang2}
-{help ncread:ncread} - Read variables from NetCDF files with support for multi-dimensional data
+{help ncdisp:ncdisp} - Display structure and metadata of NetCDF files
 
 {phang2}
-{help ncdisp:ncdisp} - Display structure and metadata of NetCDF files
+{help ncread:ncread} - Read variables from NetCDF files with support for multi-dimensional data
 
 {dlgtab:Spatial Analysis}
 
+
 {phang2}
-{help zonalstats:zonalstats} - Calculate zonal statistics from raster data in Geotiff file/NetCDF file for areas of interest
-
-
+{help zonalstats:zonalstats} - Calculate zonal statistics from raster data in Stata for areas of interest
 
 {phang2}
 {help matchgeop:matchgeop} - Match datasets based on geographic proximity and location
@@ -119,7 +114,7 @@ The {cmd:readraster} package includes the following commands organized by functi
 {help geotools_init:geotools_init} - Configurate GeoTools Java library for GeoTIFF operations
 
 {phang2}
-{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for NetCDF operations
+{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for GeoTIFF operations
 
 {marker setup}{...}
 {title:Setup Java dependencies}
@@ -175,7 +170,7 @@ Stata 18 and later versions include a compatible Java runtime environment. No ad
 {dlgtab:GeoTools Library Setup}
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:zonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
 Once downloaded, place this library in Stata's adopath—or add the library's file path to Stata's adopath.
 {p_end}
 
@@ -235,34 +230,36 @@ Read subset of GeoTIFF:
 {p_end}
 {phang2}{cmd:. gtiffread DMSP-like2020.tif, origin(100 200) size(500 500) clear}{p_end}
 
-{phang}
-Write grid data to GeoTIFF:
-{p_end}
-{phang2}{cmd:. gtiffwrite output.tif, xvar(lon) yvar(lat) valuevar(temp) crs(EPSG:4326)}{p_end}
-
 {dlgtab:NetCDF Operations}
 
 {phang}
 Display NetCDF file structure:
 {p_end}
-{phang2}{cmd:. ncdisp using "climate_data.nc"}{p_end}
+{phang2}{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{p_end}
+{phang2}{cmd:. ncdisp using `url'}{p_end}
 
 {phang}
-Read specific variable:
+Read a the first day section:
 {p_end}
-{phang2}{cmd:. ncread temperature using "climate_data.nc", clear}{p_end}
+{phang2}{cmd:. local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"}{p_end}
+{phang2}{cmd:. ncread tas using `url', origin(1 1 1) size(1 -1 -1)}{p_end}
 
 {dlgtab:Spatial Analysis}
 
 {phang}
 Calculate zonal statistics:
 {p_end}
-{phang2}{cmd:. zonalstats DMSP-like2020.tif, shpfile(admin_boundaries.shp) stats("sum avg") clear}{p_end}
+{phang2}{cmd:. zonalstats DMSP-like2020.tif, shpfile(hunan.shp) stats("sum avg") clear}{p_end}
+
+{phang}
+Convert the coordinate system of the hunan.shp to the coordinate system of the DMSP-like2020.tif:
+{p_end}
+{phang2}{cmd:. crsconvert _CX _CY, gen(alber) from(hunan.shp) to(DMSP-like2020.tif)}{p_end}
 
 {phang}
 Match geographic datasets:
 {p_end}
-{phang2}{cmd:. matchgeop city_id lat lon using grid_data.dta, neighbors(grid_id lat lon) within(10) gen(distance)}{p_end}
+{phang2}{cmd:. matchgeop ORIG_FID lat lon using light_china.dta, neighbors(n wsg84_y wsg84_x) within(80) gen(distance)}{p_end}
 
 
 {title:Source Code and Documentation}
