@@ -8,10 +8,11 @@ The `readraster` package requires Java runtime environment and specific Java lib
 
 ### Stata Version Requirements
 
-- **Stata 17**: Recommend manual installation and configuration of Java JDK 17 or later
+- **Stata 17**: Recommend manual installation and configuration of Java JDK 17 
 - **Stata 18**: Includes built-in Java runtime environment (no additional configuration needed)
+- **Stata 19**: Require manual installation and configuration of Java JDK 17 
 
-### For Stata 17 Users
+### For Stata 17 and Stata 19 Users
 
 #### Step 1: Download and Install Java JDK 17
 
@@ -47,6 +48,14 @@ Verify the Java configuration by running:
 . java query
 ```
 ![](https://github.com/tricia1353/picture/blob/main/java%20query.png)
+
+
+Note: the default JDK version can be restored by running:
+
+```stata
+. java set home default
+```
+
 
 ### For Stata 18 Users
 
@@ -123,10 +132,10 @@ After completing the setup process, you can verify that all dependencies are pro
 
 ### Version Compatibility
 
-- Java JDK 17+ is required for Stata 17
+- Java JDK 17 is required for Stata 17 and Stata 19
 - GeoTools 32.0 is the supported version for all geospatial operations
 - NetCDF-Java 5.9.1 is the supported version for NetCDF operations
 
 ## Summary
 
-Proper Java environment configuration is essential for the `readraster` package functionality. Stata 18+ users benefit from built-in Java support, while Stata 17 users need manual JDK installation. The automated setup commands (`geotools_init` and `netcdf_init`) simplify the dependency management process, though manual download may be preferable for faster setup in some environments.
+Proper Java environment configuration is essential for the `readraster` package functionality. Stata 18 users benefit from built-in Java support, while Stata 17 and Stata 19 users need manual JDK installation. The automated setup commands (`geotools_init` and `netcdf_init`) simplify the dependency management process, though manual download may be preferable for faster setup in some environments.
