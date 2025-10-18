@@ -8,7 +8,7 @@ The `readraster` package requires Java runtime environment and specific Java lib
 
 ### Stata Version Requirements
 
-- **Stata 17**: Requires manual installation and configuration of Java JDK 17 or later
+- **Stata 17**: Recommend manual installation and configuration of Java JDK 17 or later
 - **Stata 18+**: Includes built-in Java runtime environment (no additional configuration needed)
 
 ### For Stata 17 Users
@@ -64,9 +64,12 @@ For simplified setup, use the dedicated initialization command:
 1. Manually download GeoTools 32.0 from:  
    [https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip](https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip)
 
-2. Unzip the downloaded file
+   <img width="2492" height="1350" alt="image" src="https://github.com/user-attachments/assets/30f68ee7-3083-4fc1-9bf9-521fc8d1de59" />
 
-3. Initialize the environment by running:
+
+3. Unzip the downloaded file
+
+4. Initialize the environment by running:
 
 ```stata
 . geotools_init path_to_geotools-32.0/lib, plus(geotools)
