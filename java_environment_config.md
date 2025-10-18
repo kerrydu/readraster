@@ -93,6 +93,18 @@ For simplified setup, use the dedicated initialization command:
 
 Replace `path_to_geotools-32.0/lib` with the actual file path to your unzipped GeoTools 32.0 lib folder.
 
+For example, in my Win11 PC, the path is as follows.
+
+<img width="1795" height="1164" alt="image" src="https://github.com/user-attachments/assets/aace78e3-eee9-4f6f-8d05-59c6d7dbc0f2" />
+
+Then, path_to_geotools-32.0/lib is "C:\Users\kerry\Desktop\Download\geotools-32.0\lib".
+
+```stata
+. geotools_init  "C:\Users\kerry\Desktop\Download\geotools-32.0\lib", plus(geotools)
+```
+
+
+
 ## NetCDF Library Setup
 
 The NetCDF library (Version 5.9.1) is required for NetCDF file operations including `ncdisp` and `ncread` commands.
