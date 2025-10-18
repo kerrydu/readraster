@@ -201,8 +201,8 @@ local lat_start = r(min)
 local lat_count = r(N)
 
 ncread tas using `url', clear origin(1 `lat_start' `lon_start') ///
- size(-1 `lat_count' `lon_count')
- 
+ size(-1 `lat_count' `lon_count'), clear
+
 gen date = time - 3650.5  + date("2050-01-01", "YMD")
 format date %td
 
@@ -285,37 +285,21 @@ save "hunan_IDW.dta", replace
 use "hunan_IDW.dta" ,clear
 rename city Name
 merge m:1 Name using hunan.dta
-local dates "01jan2050 01jul2050"
-local suffixes "202500101 202500701"
 
-local i = 1
-foreach d of local dates {
-    local s : word `i' of `suffixes'
-    preserve
-    keep if date == date("`d'", "DMY")
-    save hunan_IDW_`s'.dta, replace
+keep if date == date("01jan2050", "DMY")
+save hunan_IDW_202500101.dta, replace
 
-    geoframe create region ///
-     "hunan_IDW_`s'.dta", id(_ID) centroids(_CX _CY) ///
-     shp(hunan_shp.dta) ///
-     replace
+geoframe create region ///
+    "hunan_IDW_202500101.dta", id(_ID) centroids(_CX _CY) ///
+    shp(hunan_shp.dta) ///
+    replace
 
-    geoplot ///
-     (area region temp_c , color(Greys) ///
-        level(6, quantile weight(temp_c))) ///
-     (line region, lwidth(vthin)), ///
-     legend(position(sw)) ///
-     title("Temperature(`s')")
+geoplot ///
+    (area region temp_c , color(Greys) ///
+    level(6, quantile weight(temp_c))) ///
+    (line region, lwidth(vthin)), ///
+     legend(position(sw))
 
-    restore
-
-    graph save Temperature(`s'), replace
-
-    local ++i
-}
-
-graph combine Temperature(202500101).gph Temperature(202500701).gph
 graph save gragh5, replace
-
 
 log close
