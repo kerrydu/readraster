@@ -80,6 +80,9 @@ Replace `path_to_geotools-32.0/lib` with the actual file path to your unzipped G
 ## NetCDF Library Setup
 
 The NetCDF library (Version 5.9.1) is required for NetCDF file operations including `ncdisp` and `ncread` commands.
+url: [https://downloads.unidata.ucar.edu/netcdf-java/5.9.1/netcdfAll-5.9.1.jar](https://downloads.unidata.ucar.edu/netcdf-java/5.9.1/netcdfAll-5.9.1.jar)
+<img width="2390" height="1336" alt="image" src="https://github.com/user-attachments/assets/ab3a6011-0658-4a0c-a4ad-600acba42586" />
+
 
 ### Automated Setup
 
