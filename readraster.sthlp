@@ -162,6 +162,11 @@ You can verify the Java configuration by running:
 
 {phang2}{cmd:. java query}{p_end}
 
+{pstd}
+You can restore the default JDK version by running:
+{p_end}
+
+{phang2}{cmd:.  java set home default}{p_end}
 
 {pstd}
 More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/main/java_environment_config.md"}
