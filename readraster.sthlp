@@ -164,7 +164,7 @@ You can verify the Java configuration by running:
 
 
 {pstd}
-More detailed instruction is available on https://github.com/kerrydu/readraster/blob/main/java_environment_config.md
+More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/main/java_environment_config.md"}
 {p_end}
 
 
