@@ -9,16 +9,20 @@ The `readraster` package requires Java runtime environment and specific Java lib
 ### Stata Version Requirements
 
 - **Stata 17**: Recommend manual installation and configuration of Java JDK 17 or later
-- **Stata 18+**: Includes built-in Java runtime environment (no additional configuration needed)
+- **Stata 18**: Includes built-in Java runtime environment (no additional configuration needed)
 
 ### For Stata 17 Users
 
-#### Step 1: Download and Install Java JDK 17+
+#### Step 1: Download and Install Java JDK 17
 
-Download and install Java JDK 17 or later from one of the following sources:
+Download and install Java JDK 17 from one of the following sources:
 
 - Oracle JDK: [https://www.oracle.com/java/technologies/downloads/](https://www.oracle.com/java/technologies/downloads/)
 - OpenJDK: [https://openjdk.org/](https://openjdk.org/)
+
+Select the JDK installation package for the corresponding operating system.
+
+![](https://github.com/tricia1353/picture/blob/main/jdk17-download.png)
 
 #### Step 2: Configure Java in Stata
 
@@ -33,6 +37,8 @@ Replace `path_to_java_home_dir` with the actual path to your Java JDK installati
 - Windows: `"C:\Program Files\Java\jdk-17"`
 - Linux: `"/usr/lib/jvm/java-17-openjdk-amd64"`
 
+![](https://github.com/tricia1353/picture/blob/main/set_home.png)
+
 #### Step 3: Verify Configuration
 
 Verify the Java configuration by running:
@@ -40,8 +46,9 @@ Verify the Java configuration by running:
 ```stata
 . java query
 ```
+![](https://github.com/tricia1353/picture/blob/main/java%20query.png)
 
-### For Stata 18+ Users
+### For Stata 18 Users
 
 Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
 
