@@ -149,7 +149,8 @@ if `direxist' == 0 & `fileexist' == 0 {
 if `direxist' {
     local files : dir `"`anything'"' files "*.jar"
     foreach file in `files' {
-        copy `"`anything'/`file'"' `"`to'/`file'"', `replace'
+		cap confirm file  `"`to'/`file'"'
+        if _rc copy `"`anything'/`file'"' `"`to'/`file'"', `replace'
     }
 }
 
