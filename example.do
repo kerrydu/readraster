@@ -201,7 +201,7 @@ local lat_start = r(min)
 local lat_count = r(N)
 
 ncread tas using `url', clear origin(1 `lat_start' `lon_start') ///
- size(-1 `lat_count' `lon_count'), clear
+ size(-1 `lat_count' `lon_count')
 
 gen date = time - 3650.5  + date("2050-01-01", "YMD")
 format date %td
