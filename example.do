@@ -40,6 +40,7 @@ if _rc {
 cap which heatplot
 if _rc {
     ssc install heatplot, replace
+	cap ssc install colrspace
 }
 cap which palettes.hlp
 if _rc {
