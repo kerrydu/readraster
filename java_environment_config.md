@@ -23,7 +23,7 @@ Download and install Java JDK 17 from one of the following sources:
 
 Select the JDK installation package for the corresponding operating system.
 
-![](https://github.com/tricia1353/picture/blob/main/jdk17-download.png)
+![](https://github.com/tricia1353/picture/blob/develop/jdk17-download.png)
 
 #### Step 2: Configure Java in Stata
 
@@ -38,7 +38,7 @@ Replace `path_to_java_home_dir` with the actual path to your Java JDK installati
 - Windows: `"C:\Program Files\Java\jdk-17"`
 - Linux: `"/usr/lib/jvm/java-17-openjdk-amd64"`
 
-![](https://github.com/tricia1353/picture/blob/main/set_home.png)
+![](https://github.com/tricia1353/picture/blob/develop/set_home.png)
 
 #### Step 3: Verify Configuration
 
@@ -47,7 +47,7 @@ Verify the Java configuration by running:
 ```stata
 . java query
 ```
-![](https://github.com/tricia1353/picture/blob/main/java%20query.png)
+![](https://github.com/tricia1353/picture/blob/develop/java%20query.png)
 
 
 Note: the default JDK version can be restored by running:

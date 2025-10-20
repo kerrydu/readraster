@@ -63,14 +63,14 @@ Installing the package from SSC:
 Installing the latest developed version from Github:
 {p_end}
 
-{phang2}{cmd:. net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)}{p_end}
+{phang2}{cmd:. net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)}{p_end}
 
 
 {phang}
 Downloading demo code and data from Github:
 {p_end}
 
-{phang2}{cmd:. net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)}{p_end}
+{phang2}{cmd:. net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)}{p_end}
 
 
 
@@ -168,7 +168,7 @@ You can restore the default JDK version by running:
 {phang2}{cmd:.  java set home default}{p_end}
 
 {pstd}
-More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/main/java_environment_config.md"}
+More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/develop/java_environment_config.md"}
 {p_end}
 
 

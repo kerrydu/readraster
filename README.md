@@ -2,18 +2,18 @@
 
 ## Overview
 
-`readraster` is a Stata command bundle that integrates the Java GeoTools and NetCDF libraries so researchers can work directly with raster data inside Stata. The accompanying [manuscript](https://github.com/kerrydu/readraster/blob/main/manuscript.pdf) describes the motivation, command syntax, and application cases in detail.
+`readraster` is a Stata command bundle that integrates the Java GeoTools and NetCDF libraries so researchers can work directly with raster data inside Stata. The accompanying [manuscript](https://github.com/kerrydu/readraster/blob/develop/manuscript.pdf) describes the motivation, command syntax, and application cases in detail.
 
 ## Installation
 
 ```stata
-net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
-net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/main/)
+net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)
+net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)
 ```
 
 ## Java Environment and Dependencies
 
-All Java runtime and library setup steps are documented in [java_environment_config.md](https://github.com/kerrydu/readraster/blob/main/java_environment_config.md). Review that guide for:
+All Java runtime and library setup steps are documented in [java_environment_config.md](https://github.com/kerrydu/readraster/blob/develop/java_environment_config.md). Review that guide for:
 
 - JDK requirements for Stata 17 versus Stata 18+
 - Initialisation of the GeoTools 34.0 and NetCDF-Java 5.9.1 libraries
