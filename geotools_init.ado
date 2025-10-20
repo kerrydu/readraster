@@ -16,10 +16,10 @@ if "`download'"!=""{
 	if `"`dir'"'=="" local dir = c(pwd)
     local pwd `c(pwd)'
     qui cd "`dir'"
-	di `"Downloading geotools-32.0-bin.zip into {browse "`dir'":`dir'}"'
+	di `"Downloading geotools-34.0-bin.zip into {browse "`dir'":`dir'}"'
     di `"Please wait for a while..."'
-	copy https://jaist.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip geotools-32.0-bin.zip
-    unzipfile geotools-32.0-bin.zip
+	copy https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip geotools-34.0-bin.zip
+    unzipfile geotools-34.0-bin.zip
 
 	if `"`anything'"'!="" & "`plus'"==""{
         di as  `"Warning: {`anything'} is ignored as the jar file is downloaded to {`dir'}"'
@@ -27,17 +27,17 @@ if "`download'"!=""{
 	if `"`anything'"'!="" & "`plus'"!=""{
         di as  "Warning: {`anything'} is ignored as the jar file is downloaded to {plus/`plus'}"
 	}
-	local anything `dir'/geotools-32.0/lib/
+	local anything `dir'/geotools-34.0/lib/
 	qui cd "`pwd'"
 }
 
 if "`plus'"!=""{
     di "Copying geotools jars to {browse `c(sysdir_plus)'`plus'} ..."
-	pjar2plus `anything', to(`plus') jar(gt-main-32.0.jar)
-    wrtjarpath `c(sysdir_plus)'/`plus', jar(gt-main-32.0.jar) adoname(geotoolsjar)
+	pjar2plus `anything', to(`plus') jar(gt-main-34.0.jar)
+    wrtjarpath `c(sysdir_plus)'/`plus', jar(gt-main-34.0.jar) adoname(geotoolsjar)
 }
 else{
-	wrtjarpath `anything', jar(gt-main-32.0.jar) adoname(geotoolsjar)
+	wrtjarpath `anything', jar(gt-main-34.0.jar) adoname(geotoolsjar)
 }
 
 end

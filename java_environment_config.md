@@ -63,7 +63,7 @@ Stata 18 and later versions include a compatible Java runtime environment. No ad
 
 ## GeoTools Library Setup
 
-The GeoTools library (Version 32.0) is required for GeoTIFF file operations including `gtiffdisp`, `gtiffread`, `gtiffwrite`, `gzonalstats`, and `crsconvert` commands.
+The GeoTools library (Version 34.0) is required for GeoTIFF file operations including `gtiffdisp`, `gtiffread`, `gtiffwrite`, `gzonalstats`, and `crsconvert` commands.
 
 ### Automated Setup (Recommended)
 
@@ -77,8 +77,8 @@ For simplified setup, use the dedicated initialization command:
 
 ### Manual Setup (Faster Alternative)
 
-1. Manually download GeoTools 32.0 from:  
-   [https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip](https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip)
+1. Manually download GeoTools 34.0 from:  
+   [https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip](https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip)
 
    <img width="2492" height="1350" alt="image" src="https://github.com/user-attachments/assets/30f68ee7-3083-4fc1-9bf9-521fc8d1de59" />
 
@@ -88,19 +88,19 @@ For simplified setup, use the dedicated initialization command:
 4. Initialize the environment by running:
 
 ```stata
-. geotools_init path_to_geotools-32.0/lib, plus(geotools)
+. geotools_init path_to_geotools-34.0/lib, plus(geotools)
 ```
 
-Replace `path_to_geotools-32.0/lib` with the actual file path to your unzipped GeoTools 32.0 lib folder.
+Replace `path_to_geotools-34.0/lib` with the actual file path to your unzipped GeoTools 34.0 lib folder.
 
 For example, in my Win11 PC, the path is as follows.
 
 <img width="1795" height="1164" alt="image" src="https://github.com/user-attachments/assets/aace78e3-eee9-4f6f-8d05-59c6d7dbc0f2" />
 
-Then, path_to_geotools-32.0/lib is "C:\Users\kerry\Desktop\Download\geotools-32.0\lib".
+Then, path_to_geotools-34.0/lib is "C:\Users\kerry\Desktop\Download\geotools-34.0\lib".
 
 ```stata
-. geotools_init  "C:\Users\kerry\Desktop\Download\geotools-32.0\lib", plus(geotools)
+. geotools_init  "C:\Users\kerry\Desktop\Download\geotools-34.0\lib", plus(geotools)
 ```
 
 
@@ -145,7 +145,7 @@ After completing the setup process, you can verify that all dependencies are pro
 ### Version Compatibility
 
 - Java JDK 17 is required for Stata 17 and Stata 19
-- GeoTools 32.0 is the supported version for all geospatial operations
+- GeoTools 34.0 is the supported version for all geospatial operations
 - NetCDF-Java 5.9.1 is the supported version for NetCDF operations
 
 ## Summary

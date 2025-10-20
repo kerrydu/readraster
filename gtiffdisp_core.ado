@@ -56,13 +56,13 @@ end
 
 java:
 
-/cp gt-main-32.0.jar
-/cp gt-referencing-32.0.jar
-/cp gt-epsg-hsql-32.0.jar
-/cp gt-epsg-extension-32.0.jar
-/cp gt-geotiff-32.0.jar
-/cp gt-coverage-32.0.jar
-/cp gt-process-raster-32.0.jar
+/cp gt-main-34.0.jar
+/cp gt-referencing-34.0.jar
+/cp gt-epsg-hsql-34.0.jar
+/cp gt-epsg-extension-34.0.jar
+/cp gt-geotiff-34.0.jar
+/cp gt-coverage-34.0.jar
+/cp gt-process-raster-34.0.jar
 
 
 import org.geotools.api.coverage.grid.GridCoverage;

@@ -27,8 +27,7 @@ program define checkdependencies
 
 version 17 
 
-local jars gt-main-32.0.jar gt-referencing-32.0.jar gt-epsg-hsql-32.0.jar gt-process-raster-32.0.jar
-local jars `jars' gt-epsg-extension-32.0.jar gt-geotiff-32.0.jar gt-coverage-32.0.jar
+local jars gt-main-34.0.jar 
 
 local rc 0
 foreach jar in `jars'{

@@ -12,10 +12,10 @@ cap findfile netcdfAll-5.9.1.jar,path(`"`c(pwd)'"')
 if _rc==0 netcdf_init `c(pwd)', plus(netcdf)
 else netcdf_init, download plus(netcdf)
 
-cap findfile geotools-32.0-bin.zip, path(`"`c(pwd)'"')
+cap findfile geotools-34.0-bin.zip, path(`"`c(pwd)'"')
 if _rc==0{
-     unzipfile geotools-32.0-bin.zip
-     geotools_init `c(pwd)'geotools-32.0/lib, plus(geotools) 
+     unzipfile geotools-34.0-bin.zip
+     geotools_init `c(pwd)'/geotools-34.0/lib, plus(geotools) 
 }
 else geotools_init, plus(geotools) download
 

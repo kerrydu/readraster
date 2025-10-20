@@ -182,7 +182,7 @@ Stata 18 and later versions include a compatible Java runtime environment. No ad
 {dlgtab:GeoTools Library Setup}
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 32.0 Java library.
+Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 34.0 Java library.
 Once downloaded, place this library in Stata's adopath—or add the library's file path to Stata's adopath.
 {p_end}
 
@@ -198,13 +198,13 @@ Note that this process may take dozens of minutes—Stata’s speed for copying 
 {p_end}
 
 {pstd}
-As a faster alternative, we recommend manually downloading the GeoTools library from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2032%20Releases/32.0/geotools-32.0-bin.zip"} and unzipping the downloaded file. After doing so, initialize the environment by running:
+As a faster alternative, we recommend manually downloading the GeoTools library from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip"} and unzipping the downloaded file. After doing so, initialize the environment by running:
 {p_end}
 
-{phang2}{cmd:. geotools_init} {it:path_to_geotools-32.0/lib}{cmd:, plus(geotools)}{p_end}
+{phang2}{cmd:. geotools_init} {it:path_to_geotools-34.0/lib}{cmd:, plus(geotools)}{p_end}
 
 {pstd}
-Note that you should replace {it:path_to_geotools-32.0/lib} with the actual file path to your unzipped GeoTools 32.0 lib folder.
+Note that you should replace {it:path_to_geotools-34.0/lib} with the actual file path to your unzipped GeoTools 34.0 lib folder.
 {p_end}
 
 {pstd}

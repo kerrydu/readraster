@@ -56,22 +56,22 @@ end
 java:
 
 
-/cp gt-main-32.0.jar
-/cp gt-referencing-32.0.jar
-/cp gt-epsg-hsql-32.0.jar
-/cp gt-epsg-extension-32.0.jar
-/cp gt-geotiff-32.0.jar
-/cp gt-coverage-32.0.jar
-/cp gt-shapefile-32.0.jar
-/cp gt-api-32.0.jar
-/cp gt-metadata-32.0.jar
+/cp gt-main-34.0.jar
+/cp gt-referencing-34.0.jar
+/cp gt-epsg-hsql-34.0.jar
+/cp gt-epsg-extension-34.0.jar
+/cp gt-geotiff-34.0.jar
+/cp gt-coverage-34.0.jar
+/cp gt-shapefile-34.0.jar
+/cp gt-api-34.0.jar
+/cp gt-metadata-34.0.jar
 
 // NetCDF libraries
 /cp netcdfAll-5.9.1.jar
 
 /cp json-simple-1.1.1.jar
-/cp commons-lang3-3.15.0.jar
-/cp commons-io-2.16.1.jar
+/cp commons-lang3-3.18.0.jar
+/cp commons-io-2.19.0.jar
 /cp jts-core-1.20.0.jar
 
 

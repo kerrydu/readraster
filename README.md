@@ -16,7 +16,7 @@ net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/re
 All Java runtime and library setup steps are documented in [java_environment_config.md](https://github.com/kerrydu/readraster/blob/main/java_environment_config.md). Review that guide for:
 
 - JDK requirements for Stata 17 versus Stata 18+
-- Initialisation of the GeoTools 32.0 and NetCDF-Java 5.9.1 libraries
+- Initialisation of the GeoTools 34.0 and NetCDF-Java 5.9.1 libraries
 - Verification and troubleshooting tips after installation
 
 ## Command Overview

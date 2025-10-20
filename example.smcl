@@ -1,0 +1,1267 @@
+{com}. 
+. ********Example of Using readraster Package************
+. cap findfile readraster.sthlp
+{txt}
+{com}.     if _rc {c -(}
+.     display "change the working directory to the folder where readraster package is located"
+.     exit
+.     {c )-}
+{txt}
+{com}. 
+. cap findfile DMSP-like2020.tif
+{txt}
+{com}. if _rc {c -(}
+.    display "change the working directory to the folder where readraster package is located"
+.    exit
+. {c )-}
+{txt}
+{com}. ************Set up for Readraster************
+. 
+. cap findfile gt-main-32.0.jar
+{txt}
+{com}. if _rc {c -(}
+.    display "using setup.do to install Java dependencies"
+{res}using setup.do to install Java dependencies
+{com}.    display "downloading the Java dependencies requires dozen minutes and might fail due to network issues"
+{res}downloading the Java dependencies requires dozen minutes and might fail due to network issues
+{com}.    display `"if it fails, please try again, or download the Java dependencies manually as instructed in georools_init (see {c -(}view "geotools_init.sthlp":help geotools_init{c )-})"'
+{res}if it fails, please try again, or download the Java dependencies manually as instructed in georools_init (see {view "geotools_init.sthlp":help geotools_init})
+{com}.    do setup.do
+{txt}
+{com}. 
+. ************Set up for Readraster************
+. display "******Download Java dependency for readraster*******"
+{res}******Download Java dependency for readraster*******
+{txt}
+{com}. display "******The dowloading may take dozen mininutes*******"
+{res}******The dowloading may take dozen mininutes*******
+{txt}
+{com}. 
+. cap findfile geotools_init.ado
+{txt}
+{com}. if _rc {c -(}
+.         display "make sure the current directory is the one containing geotools_init.ado"
+.         exit
+. {c )-}
+{txt}
+{com}. cap findfile netcdfAll-5.9.1.jar,path(`"`c(pwd)'"')
+{txt}
+{com}. if _rc==0 netcdf_init `c(pwd)', plus(netcdf)
+Copying netcdfAll-5.9.1.jar to {browse Z:/working\ado\plus/netcdf} ...
+{res}{txt}
+{com}. else netcdf_init, download plus(netcdf)
+{txt}
+{com}. 
+. cap findfile geotools-34.0-bin.zip, path(`"`c(pwd)'"')
+{txt}
+{com}. if _rc==0{c -(}
+.      unzipfile geotools-34.0-bin.zip
+{res}{error:    can't overwrite "}{error:geotools-34.0/licenses/NOTICE.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/src/org/geotools/tutorial/quickstart/Quickstart.java}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/README.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/OGC.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/HSQL.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/EPSG.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/GeoTools.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/netCDF.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/LGPL.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/COLORBREWER.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/PostgreSQL.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/Bitstream-Vera-Fonts.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/licenses/W3C.html}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imagen-core-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jiffle-op-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jiffle-language-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/antlr4-runtime-4.7.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/janino-3.0.8.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-compiler-3.0.8.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/classbreaks-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/affine-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/algebra-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bandmerge-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bandselect-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bandcombine-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/border-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/buffer-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/crop-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/iterators-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/lookup-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mosaic-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/nullop-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/rescale-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/scale-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/scale2-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bigint-0.7.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/stats-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/guava-33.4.8-jre.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/failureaccess-1.0.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jspecify-1.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/error_prone_annotations-2.36.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/j2objc-annotations-3.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/translate-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/utilities-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jts-core-1.20.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/warp-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/zonal-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/binarize-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/format-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/colorconvert-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/errordiffusion-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/orderdither-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/colorindexer-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imagefunction-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/piecewise-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/classifier-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/rlookup-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/vectorbin-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/shadedrelief-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/concurrent-tile-cache-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/rendered-image-browser-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageread-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/convolve-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/contour-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/vectorize-0.9.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-app-schema-resolver-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/xml-commons-resolver-1.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-app-schema-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jdom2-2.0.6.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-digester-1.8.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-logging-1.3.5.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-lang3-3.18.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.wfs-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-io-2.19.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-arcgrid-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/unit-api-2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-arcgrid-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-brewer-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-charts-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/eastwood-1.1.1-20090908.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jfreechart-1.0.10.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jcommon-1.0.13.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-complex-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-cql2-text-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-cql2-json-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jackson-core-2.19.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jackson-databind-2.19.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jackson-annotations-2.19.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-geojson-core-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-coverage-api-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-utilities-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-geocore-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/spotbugs-annotations-4.0.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-grib-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/cdm-core-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/udunits-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/httpservices-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/httpmime-4.5.13.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jcommander-1.78.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/protobuf-java-3.19.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/joda-time-2.10.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/slf4j-api-2.0.16.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/grib-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jj2000-5.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-netcdf-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/netcdf4-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jna-5.4.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bufr-5.5.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/opendap-2.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-cli-1.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-coverage-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-tiff-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/aircompressor-0.27.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-cql-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-csv-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/opencsv-5.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-epsg-extension-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-epsg-hsql-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/hsqldb-2.7.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-feature-pregeneralized-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-geopkg-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/sqlite-jdbc-3.41.2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-geotiff-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-cog-reader-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-cog-commons-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-cog-streams-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/ehcache-3.4.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-graph-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-grassraster-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-grid-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-http-commons-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/httpclient-4.5.14.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/httpcore-4.4.16.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-codec-1.11.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-http-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-image-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-imageio-ext-gdal-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalarcbinarygrid-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalframework-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gdal-3.2.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalmrsid-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalecw-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdaldted-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalkakadujp2-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalmrsidjp2-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalecwjp2-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalehdr-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalenvihdr-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalerdasimg-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalnitf-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalrpftoc-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalidrisi-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalvrt-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-gdalsrp-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-imagemosaic-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-streams-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-beanutils-1.11.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-collections-3.2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jaxb-api-2.4.0-b180830.0359.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jaxb-runtime-2.4.0-b180830.0438.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/txw2-2.4.0-b180830.0438.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/istack-commons-runtime-3.0.7.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/stax-ex-1.8.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/FastInfoset-1.2.15.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/javax.activation-api-1.2.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-imagepyramid-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-dbcp-1.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jp2k-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-kakadu-2.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/imageio-ext-kakadujni-5.2.6.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-main-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-text-1.13.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/re2j-1.8.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/ejml-ddense-0.41.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/ejml-core-0.41.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-mbstyle-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/json-simple-1.1.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-metadata-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.ows-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-mongodb-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mongodb-driver-legacy-4.0.6.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/bson-4.0.6.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mongodb-driver-core-4.0.6.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mongodb-driver-sync-4.0.6.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-api-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-pool-1.5.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/systems-common-2.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/si-quantity-2.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/si-units-2.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jakarta.annotation-api-1.3.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/indriya-2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/uom-lib-common-2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jakarta.inject-api-2.0.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/apiguardian-api-1.1.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-process-feature-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-process-geometry-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-process-raster-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-process-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-property-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-referencing-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jgridshift-core-1.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/GeographicLib-Java-1.49.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-render-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/disruptor-1.2.15.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-sample-data-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/xmlunit-core-2.10.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jakarta.xml.bind-api-2.3.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jakarta.activation-api-1.2.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/xmlunit-matchers-2.9.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/wiremock-standalone-3.11.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-sample-data-access-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-shapefile-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-swing-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/miglayout-3.7-swing.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-tile-client-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-transform-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-wfs-ng-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-gml-geometry-streaming-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-wms-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-wmts-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-wmts-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.wmts-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xml-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-collections4-4.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-ysld-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/snakeyaml-2.4.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jsr305-3.0.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-db2-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jcc-12.1.0.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-h2-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/h2-1.1.119.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/geodb-0.9.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/hatbox-1.0.b11.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-hana-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-mysql-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mysql-connector-j-9.1.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-oracle-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/ojdbc17-23.7.0.25.01.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-postgis-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-sqlserver-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/jtds-1.3.1.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/mssql-jdbc-9.4.0.jre8.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-jdbc-teradata-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-core-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/picocontainer-1.2.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/commons-jxpath-1.3.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/org.eclipse.emf.common-2.15.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/org.eclipse.emf.ecore-2.15.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/org.eclipse.xsd-2.12.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/org.eclipse.emf.ecore.xmi-2.15.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-csw-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.csw-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-fes-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.fes-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-filter-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-gml2-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-gml3-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-kml-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-ows-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-sld-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-wcs-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/org.w3.xlink-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.wcs-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-wfs-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-wms-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/gt-xsd-wps-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/lib/net.opengis.wps-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/optional/gt-epsg-postgresql-34.0.jar}{error:"; skipping}
+{error:    can't overwrite "}{error:geotools-34.0/optional/gt-epsg-wkt-34.0.jar}{error:"; skipping}
+
+{text:successfully unzipped geotools-34.0-bin.zip to current directory}
+{text:total processed:  271}
+{error:        skipped:  271}
+{text:      extracted:  0}
+{com}.      geotools_init `c(pwd)'/geotools-34.0/lib, plus(geotools) 
+Copying geotools jars to {browse Z:/working\ado\plus/geotools} ...
+{res}{com}. {c )-}
+{txt}
+{com}. else geotools_init, plus(geotools) download
+{txt}
+{com}. 
+. display "******Java dependency has been set up*******"
+{res}******Java dependency has been set up*******
+{txt}
+{com}. display "********Now you can use readraster**********"
+{res}********Now you can use readraster**********
+{txt}
+{com}. 
+. ************Set up for Readraster************
+. 
+{txt}end of do-file
+{com}. {c )-}
+{txt}
+{com}. 
+. cap which geoplot
+{txt}
+{com}. if _rc {c -(}
+.    ssc install geoplot, replace
+. {c )-}
+{txt}
+{com}. cap which lmoremata.mlib
+{txt}
+{com}. if _rc {c -(}
+.     ssc install moremata, replace
+. {c )-}
+{txt}
+{com}. cap which heatplot
+{txt}
+{com}. if _rc {c -(}
+.     ssc install heatplot, replace
+. {c )-}
+{txt}
+{com}. cap which palettes.hlp
+{txt}
+{com}. if _rc {c -(}
+.     ssc install palettes, replace
+. {c )-}
+{txt}
+{com}. 
+. 
+. 
+. set scheme sj, permanently
+{txt}({cmd:set scheme} preference recorded)
+
+{com}. 
+. **********************************************************
+. * downloading nc file
+. cap findfile tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{txt}
+{com}. 
+. if _rc{c -(}
+.         local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+>                                 "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+>                                 "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+.                                 
+.         copy `"`url'"' .
+. {c )-}
+{txt}
+{com}. **************************Example of GeoTIFF********************************
+. ************5.1 Display the Metadata************
+. 
+. //Display the Metadata of the GeoTIFF File
+. gtiffdisp DMSP-like2020.tif
+{res}
+=== Band Information ===
+Number of bands: 1
+Band 1 : GRAY_INDEX           | NoData: Not defined
+
+=== Spatial Characteristics ===
+X range: [-2643772.8565 ~ 2212227.1435]
+Y range: [1871896.5263 ~ 5926896.5263]
+Resolution: X=1000.0000 units/pixel, Y=1000.0000 units/pixel
+
+=== Coordinate System ===
+CRS Name: PCS Name = WGS_1984_Albers
+CRS WKT: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+
+=== Units ===
+X unit: m
+Y unit: m
+
+=== Filtered Metadata ===
+ImageN.ImageReader          : it.geosolutions.imageioimpl.plugins.tiff.TIFFIm...
+image_height                : 4055
+image_min_x_coord           : 0
+image_width                 : 4856
+ImageN.ImageReadParam       : it.geosolutions.imageio.plugins.tiff.TIFFImageR...
+image_min_y_coord           : 0
+{txt}
+{com}. 
+. ************5.2 Import Raster Data into Stata************
+. 
+. //Read the GeoTIFF file for a specific region
+. spshape2dta hunan.shp, replace 
+{res}{txt}{col 3}(importing .shp file)
+{col 3}(importing .dbf file)
+  (creating _ID spatial-unit id)
+{res}{txt}  (creating _CX coordinate)
+  (creating _CY coordinate)
+
+  file hunan_shp.dta created
+  file hunan.dta     created
+
+{com}. use "hunan.dta",clear
+{txt}
+{com}. crsconvert _CX _CY, gen(alber) from(hunan.shp) to(DMSP-like2020.tif)
+{res}Converting coordinates from CRS:
+Source CRS: GEOGCS["GCS_WGS_1984", 
+  DATUM["D_WGS_1984", 
+    SPHEROID["WGS_1984", 6378137.0, 298.257223563]], 
+  PRIMEM["Greenwich", 0.0], 
+  UNIT["degree", 0.017453292519943295], 
+  AXIS["Longitude", EAST], 
+  AXIS["Latitude", NORTH]]
+Target CRS: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+{txt}
+{com}. 
+. qui sum alber_CX
+{txt}
+{com}. local maxX = r(max)+2000
+{txt}
+{com}. local minX = r(min)-2000
+{txt}
+{com}. 
+. qui sum alber_CY
+{txt}
+{com}. local maxY = r(max)+2000
+{txt}
+{com}. local minY = r(min)-2000
+{txt}
+{com}. 
+. gtiffread DMSP-like2020.tif, origin(1 1) size(-1 1) clear 
+{txt}
+{com}. gen n=_n
+{txt}
+{com}. sum n if y>`minY' & y<`maxY'
+
+{txt}    Variable {c |}        Obs        Mean    Std. dev.       Min        Max
+{hline 13}{c +}{hline 57}
+{space 11}n {c |}{res}        400      3006.5    115.6143       2807       3206
+{txt}
+{com}. local start_row = r(min)
+{txt}
+{com}. local n_rows = r(N)
+{txt}
+{com}. 
+. gtiffread DMSP-like2020.tif, origin(1 1) size(1 -1) clear 
+{txt}
+{com}. gen n=_n
+{txt}
+{com}. sum n if x>`minX' & x<`maxX'
+
+{txt}    Variable {c |}        Obs        Mean    Std. dev.       Min        Max
+{hline 13}{c +}{hline 57}
+{space 11}n {c |}{res}        385        3292    111.2842       3100       3484
+{txt}
+{com}. local start_col = r(min)
+{txt}
+{com}. local n_cols = r(N)
+{txt}
+{com}. 
+. gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') ///
+>                              size(`n_rows' `n_cols') clear
+{txt}
+{com}. 
+. save DMSP-like2020.dta,replace
+{txt}{p 0 4 2}
+file {bf}
+DMSP-like2020.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. // heatplot
+. use DMSP-like2020.dta, clear
+{txt}
+{com}. heatplot value y x, color(Greys, reverse) level(6) ///
+>                 xlabel(, angle(45)) graphr(c(white))
+{res}{txt}
+{com}. 
+. graph save gragh1, replace
+{res}{txt}file {bf:gragh1.gph} saved
+
+{com}. 
+. 
+. ********5.3 Calculating Average Nighttime Light Intensity for hunan********
+. zonalstats DMSP-like2020.tif using hunan.shp, stats("avg") clear
+{res}GeoTIFF CRS detected: PCS Name = WGS_1984_Albers. User-provided CRS is ignored.
+Shapefile CRS: GCS_WGS_1984
+Reprojecting shapefile from GCS_WGS_1984 to PCS Name = WGS_1984_Albers
+Shapefile bounds for raster reading: ReferencedEnvelope[373271.4002242747 : 918728.259838356, 2596264.786161866 : 3202467.2929103803] DefaultProjectedCRS[PCS Name = WGS_1984_Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Raster envelope: ReferencedEnvelope[-2643772.8565207715 : 2212227.1434792285, 1871896.5262559392 : 5926896.526255939] DefaultProjectedCRS[PCS Name = WGS_1984_Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Using intersection bounds: ReferencedEnvelope[373271.4002242747 : 918728.259838356, 2596264.786161866 : 3202467.2929103803] DefaultProjectedCRS[PCS Name = WGS_1984_Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Successfully created optimized read parameters
+Successfully read raster data with optimization
+Total features: 14
+Created string variable: z_ShiName (length 16)
+Created numeric variable: z_Shape_Leng
+Created numeric variable: z_Shape_Area
+Created string variable: z_Name (length 16)
+Created numeric variable: z_lon
+Created numeric variable: z_lat
+Created numeric variable: avg
+Data successfully exported to Stata dataset.
+{txt}
+{com}. list z_Name avg
+{txt}
+     {c TLC}{hline 13}{c -}{hline 11}{c TRC}
+     {c |} {res}     z_Name         avg {txt}{c |}
+     {c LT}{hline 13}{c -}{hline 11}{c RT}
+  1. {c |} {res}    Changde   3.2560185 {txt}{c |}
+  2. {c |} {res}   Chenzhou   2.0607766 {txt}{c |}
+  3. {c |} {res}   Hengyang   3.2285136 {txt}{c |}
+  4. {c |} {res}    Huaihua   1.2616182 {txt}{c |}
+  5. {c |} {res}      Loudi   3.7707743 {txt}{c |}
+     {c LT}{hline 13}{c -}{hline 11}{c RT}
+  6. {c |} {res}   Shaoyang   1.7991827 {txt}{c |}
+  7. {c |} {res}   Xiangtan   7.2288051 {txt}{c |}
+  8. {c |} {res}    Xiangxi    1.458301 {txt}{c |}
+  9. {c |} {res}     Yiyang   2.4555944 {txt}{c |}
+ 10. {c |} {res}   Yongzhou   2.0996052 {txt}{c |}
+     {c LT}{hline 13}{c -}{hline 11}{c RT}
+ 11. {c |} {res}    Yueyang   3.8674934 {txt}{c |}
+ 12. {c |} {res}Zhangjiajie   1.7823899 {txt}{c |}
+ 13. {c |} {res}   Changsha   11.616603 {txt}{c |}
+ 14. {c |} {res}    Zhuzhou   3.8699787 {txt}{c |}
+     {c BLC}{hline 13}{c -}{hline 11}{c BRC}
+
+{com}. save "hunan_light.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+hunan_light.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+hunan_light.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. use hunan.dta, clear
+{txt}
+{com}. 
+. rename Name z_Name  
+{res}{txt}
+{com}. merge 1:1 z_Name using hunan_light.dta,nogen
+{res}{txt}{p 0 7 2}
+(variable
+{bf:z_Name} was {bf:str11}, now {bf:str16} to accommodate using data's values)
+{p_end}
+
+{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}              14{txt}  
+{col 5}{hline 41}
+
+{com}. save hunan_light.dta, replace
+{txt}{p 0 4 2}
+file {bf}
+hunan_light.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. geoframe create region     ///
+>          "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+>           shp(hunan_shp.dta) replace
+{res}{txt}(creating frame {stata geoframe describe region:{bf:region}} from hunan_light.dta)
+(creating frame {stata geoframe describe region_shp:{bf:region_shp}} from hunan_shp.dta)
+{res}
+            {txt}Frame name: {bf:region} [{stata frame change region:make current}]
+            Frame type: {bf:attribute}
+          Feature type: <none>
+         Number of obs: {bf:14}
+               Unit ID: {bf:_ID}
+           Coordinates: {bf:_CX _CY}
+    Linked shape frame: {stata geoframe describe region_shp:{bf:region_shp}}
+
+{com}. 
+. geoplot ///
+>     (area region avg, color(Greys, reverse) ///
+>                 level(6, quantile weight(avg))) ///
+>     (line region, lwidth(vthin)), legend(position(sw))
+{res}{txt}
+{com}.  
+. graph save gragh2, replace
+{txt}{p 0 4 2}
+(file {bf}
+gragh2.gph{rm}
+not found)
+{p_end}
+{res}{txt}file {bf:gragh2.gph} saved
+
+{com}. 
+. ********5.4 Calculate 80km-radius IDW light for cities********
+. 
+. use "DMSP-like2020.dta", clear
+{txt}
+{com}. crsconvert x y, gen(wsg84_) from(DMSP-like2020.tif) to(hunan.shp)
+{res}Converting coordinates from CRS:
+Source CRS: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+Target CRS: GEOGCS["GCS_WGS_1984", 
+  DATUM["D_WGS_1984", 
+    SPHEROID["WGS_1984", 6378137.0, 298.257223563]], 
+  PRIMEM["Greenwich", 0.0], 
+  UNIT["degree", 0.017453292519943295], 
+  AXIS["Longitude", EAST], 
+  AXIS["Latitude", NORTH]]
+{txt}
+{com}. gen n=_n
+{txt}
+{com}. save "light_china.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+light_china.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+light_china.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. use "hunan_city.dta", clear
+{txt}
+{com}. matchgeop ORIG_FID lat lon using light_china.dta, ///
+>                neighbors(n wsg84_y wsg84_x) within(80) gen(distance)
+{res}{txt}
+{com}. 
+. merge m:1 n using light_china.dta, keep(3)
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}         206,615{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop _merge
+{txt}
+{com}. 
+. drop if value==.
+{txt}(0 observations deleted)
+
+{com}. gen weight  = 1/distance
+{txt}
+{com}. gen weighted_light = value * weight
+{txt}
+{com}. bysort city: egen sum_weighted_light = total(weighted_light)
+{txt}
+{com}. bysort city: egen total_weight = total(weight)
+{txt}
+{com}. gen idw_light = sum_weighted_light / total_weight
+{txt}
+{com}. 
+. duplicates drop city, force
+
+{p 0 4}{txt}Duplicates in terms of {res} city{p_end}
+
+{txt}(206,601 observations deleted)
+
+{com}. 
+. ///IDW interpolated light distributions in Hunan
+> rename city Name
+{res}{txt}
+{com}. merge m:1 Name using hunan.dta
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}              14{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. 
+. save "hunan_light.dta", replace
+{txt}{p 0 4 2}
+file {bf}
+hunan_light.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. geoframe create region ///
+>    "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) replace
+{res}{txt}(creating frame {stata geoframe describe region:{bf:region}} from hunan_light.dta)
+(creating frame {stata geoframe describe region_shp:{bf:region_shp}} from hunan_shp.dta)
+{res}
+            {txt}Frame name: {bf:region} [{stata frame change region:make current}]
+            Frame type: {bf:attribute}
+          Feature type: <none>
+         Number of obs: {bf:14}
+               Unit ID: {bf:_ID}
+           Coordinates: {bf:_CX _CY}
+    Linked shape frame: {stata geoframe describe region_shp:{bf:region_shp}}
+
+{com}. 
+. geoplot ///
+>   (area region idw_light , color(Greys, reverse) ///
+>           level(6, quantile weight(idw_light))) ///
+>   (line region, lwidth(vthin)), legend(position(sw))
+{res}{txt}
+{com}. 
+. graph save gragh3, replace
+{txt}{p 0 4 2}
+(file {bf}
+gragh3.gph{rm}
+not found)
+{p_end}
+{res}{txt}file {bf:gragh3.gph} saved
+
+{com}. 
+. **************************Example of NetCDF********************************
+. 
+. ************6.1 Display the Metadata************
+. 
+. //Display the Metadata of the NetCDF File
+. ncdisp using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{res}
+=== File Structure ===
+
+[Global Attributes]
+_NCProperties            : version=1|netcdflibversion=4.4.1.1|hdf5libversi...
+activity                 : NEX-GDDP-CMIP6
+contact                  : Dr. Rama Nemani: rama.nemani@nasa.gov, Dr. Brid...
+Conventions              : CF-1.7
+creation_date            : 2021-10-04T14:25:12.081609+00:00
+frequency                : day
+institution              : NASA Earth Exchange, NASA Ames Research Center,...
+variant_label            : r1i1p1f1
+product                  : output
+realm                    : atmos
+source                   : BCSD
+scenario                 : ssp245
+references               : BCSD method: Thrasher et al., 2012, Hydrol. Ear...
+version                  : 1.0
+tracking_id              : 6ab2a874-d3fe-484a-a7e8-82df448e364f
+title                    : BCC-CSM2-MR, r1i1p1f1, ssp245, global downscale...
+resolution_id            : 0.25 degree
+history                  : 2021-10-04T14:25:12.081609+00:00: install globa...
+disclaimer               : This data is considered provisional and subject...
+external_variables       : areacella
+cmip6_source_id          : BCC-CSM2-MR
+cmip6_institution_id     : BCC
+cmip6_license            : CC-BY-SA 4.0
+_CoordSysBuilder         : ucar.nc2.internal.dataset.conv.CF1Convention
+
+[Dimensions]
+Name                 Length   Attribute      
+time                 365      Coordinate     
+lat                  600      Coordinate     
+lon                  1440     Coordinate     
+
+[Variables]
+Name                      Dimensions                     Type           
+tas                       time lat lon                   float          
+time                      time                           double         
+lat                       lat                            double         
+lon                       lon                            double         
+
+[Groups]
+{txt}
+{com}. 
+. //Display variable metadata with ncdisp
+. ///tas variable
+> ncdisp tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{res}
+=== Dimensions ===
+Dimension       Length   Coordinate     
+time            365      [Yes]          
+lat             600      [Yes]          
+lon             1440     [Yes]          
+
+=== Scale/Offset Parameters ===
+missing value  : 100000002004087730000.000000 (Type: float)
+ FillValue     : 100000002004087730000.000000 (Type: float)
+
+=== Attributes ===
+missing_value       : 1.0E20
+cell_measures       : area: areacella
+cell_methods        : area: mean time: maximum (interval: 5 minutes)
+original_name       : TREFHTMX
+comment             : near-surface (usually, 2 meter) air temperature; derived from downscaled tasmax & tasmin
+units               : K
+long_name           : Daily Near-Surface Air Temperature
+standard_name       : air_temperature
+_FillValue          : 1.0E20
+_ChunkSizes         : 1
+
+=== Metadata ===
+Units          : K (original: K)
+
+Shape          : [365, 600, 1440]
+Data Type      : float
+
+=== Variable Structure ===
+Name: tas                       Type: float          
+{txt}
+{com}. 
+. ///time variable
+> ncdisp time using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{res}
+=== Dimensions ===
+Dimension       Length   Coordinate     
+time            365      [Yes]          
+
+=== Scale/Offset Parameters ===
+
+=== Attributes ===
+units               : days since 2040-01-01
+standard_name       : time
+long_name           : time
+calendar            : 365_day
+axis                : T
+_ChunkSizes         : 365
+_CoordinateAxisType : Time
+
+=== Metadata ===
+Units          : days since 2040-01-01 (original: days since 2040-01-01)
+
+Shape          : [365]
+Data Type      : double
+
+=== Variable Structure ===
+Name: time                      Type: double         
+{txt}
+{com}. 
+. ************6.2 Import Raster Data into Stata************
+. 
+. //Read the NetCDF file
+. 
+. ncread lon using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
+{res}Sucessfully import 1440 Obs into Stata.
+{txt}
+{com}. gen n=_n 
+{txt}
+{com}. qui sum n if lon>=108 & lon<=115
+{txt}
+{com}. local lon_start = r(min)
+{txt}
+{com}. local lon_count = r(N)
+{txt}
+{com}. 
+. ncread lat using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
+{res}Sucessfully import 600 Obs into Stata.
+{txt}
+{com}. gen n=_n 
+{txt}
+{com}. qui sum n if lat>=24 & lat<=31
+{txt}
+{com}. local lat_start = r(min)
+{txt}
+{com}. local lat_count = r(N)
+{txt}
+{com}. 
+. ncread tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, ///
+>                         clear origin(1 `lat_start' `lon_start') ///
+>                         size(-1 `lat_count' `lon_count')
+{res}
+
+Sucessfully import 286160 Obs into Stata.
+{txt}
+{com}. 
+. gen date = time - 3650.5  + date("2050-01-01", "YMD")
+{txt}
+{com}. format date %td
+{txt}
+{com}. 
+. list in 1/10
+{txt}
+     {c TLC}{hline 8}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c TRC}
+     {c |} {res}  time      lat       lon         tas        date {txt}{c |}
+     {c LT}{hline 8}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c RT}
+  1. {c |} {res}3650.5   24.125   108.125   288.02673   01jan2050 {txt}{c |}
+  2. {c |} {res}3650.5   24.125   108.375   289.05478   01jan2050 {txt}{c |}
+  3. {c |} {res}3650.5   24.125   108.625   288.97476   01jan2050 {txt}{c |}
+  4. {c |} {res}3650.5   24.125   108.875   288.53751   01jan2050 {txt}{c |}
+  5. {c |} {res}3650.5   24.125   109.125   289.27686   01jan2050 {txt}{c |}
+     {c LT}{hline 8}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c RT}
+  6. {c |} {res}3650.5   24.125   109.375   290.04214   01jan2050 {txt}{c |}
+  7. {c |} {res}3650.5   24.125   109.625   289.90146   01jan2050 {txt}{c |}
+  8. {c |} {res}3650.5   24.125   109.875   290.08304   01jan2050 {txt}{c |}
+  9. {c |} {res}3650.5   24.125   110.125   286.86743   01jan2050 {txt}{c |}
+ 10. {c |} {res}3650.5   24.125   110.375   287.87402   01jan2050 {txt}{c |}
+     {c BLC}{hline 8}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c BRC}
+
+{com}. 
+. save "grid_all.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+grid_all.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+grid_all.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. ********6.3 Calculating Average temperature for hunan********
+. 
+. zonalstats tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc using "hunan.shp", ///
+>                       var(tas) stats(avg) origin(1 `lat_start' `lon_start') ///
+>                               size(1 `lat_count' `lon_count') crs(EPSG:4326) clear
+{res}NetCDF variable 'tas' type: float
+NetCDF variable 'tas' missing value attribute: 1.0E20 (type: float)
+NetCDF CRS not detected. Using user-provided CRS: EPSG:4326
+Coordinate systems are compatible, no reprojection needed
+Created numeric variable: avg
+Data successfully exported to Stata dataset.
+{txt}
+{com}. replace avg = avg - 273.15
+{txt}(14 real changes made)
+
+{com}. save "hunan_temp.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+hunan_temp.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+hunan_temp.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. use hunan.dta, clear
+{txt}
+{com}. 
+. rename Name z_Name  
+{res}{txt}
+{com}. merge 1:1 z_Name using hunan_temp.dta,nogen
+{res}{txt}{p 0 7 2}
+(variable
+{bf:z_Name} was {bf:str11}, now {bf:str16} to accommodate using data's values)
+{p_end}
+
+{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}              14{txt}  
+{col 5}{hline 41}
+
+{com}. save hunan_temp.dta, replace
+{txt}{p 0 4 2}
+file {bf}
+hunan_temp.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. geoframe create region ///
+>    "hunan_temp.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) replace
+{res}{txt}(creating frame {stata geoframe describe region:{bf:region}} from hunan_temp.dta)
+(creating frame {stata geoframe describe region_shp:{bf:region_shp}} from hunan_shp.dta)
+{res}
+            {txt}Frame name: {bf:region} [{stata frame change region:make current}]
+            Frame type: {bf:attribute}
+          Feature type: <none>
+         Number of obs: {bf:14}
+               Unit ID: {bf:_ID}
+           Coordinates: {bf:_CX _CY}
+    Linked shape frame: {stata geoframe describe region_shp:{bf:region_shp}}
+
+{com}. 
+. geoplot ///
+>  (area region avg, color(Greys) ///
+>                    level(6, quantile weight(avg))) ///
+>  (line region, lwidth(vthin)), legend(position(sw))
+{res}{txt}
+{com}. 
+. graph save gragh4, replace
+{txt}{p 0 4 2}
+(file {bf}
+gragh4.gph{rm}
+not found)
+{p_end}
+{res}{txt}file {bf:gragh4.gph} saved
+
+{com}. 
+. ********6.4 Calculate 80km-radius IDW average temperatures for cities********
+. use "grid_all.dta", clear
+{txt}
+{com}. rename lon ulon
+{res}{txt}
+{com}. rename lat ulat
+{res}{txt}
+{com}. gen n=_n
+{txt}
+{com}. save "grid_all_2.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+grid_all_2.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+grid_all_2.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. use "hunan_city.dta", clear
+{txt}
+{com}. matchgeop ORIG_FID lat lon using grid_all_2.dta, ///
+>                      neighbors(n ulat ulon) within(80) gen(distance)
+{res}{txt}
+{com}. 
+. merge m:1 n using grid_all_2.dta, keep(3)
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}         148,555{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. drop _merge
+{txt}
+{com}. 
+. list city ulat ulon distance date tas in 1/10
+{txt}
+     {c TLC}{hline 10}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 11}{c TRC}
+     {c |} {res}    city     ulat      ulon    distance        date         tas {txt}{c |}
+     {c LT}{hline 10}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 11}{c RT}
+  1. {c |} {res}Yongzhou   25.125   111.625   72.995079   01jan2050   287.24945 {txt}{c |}
+  2. {c |} {res}Yongzhou   25.125   111.875   73.701637   01jan2050    284.2619 {txt}{c |}
+  3. {c |} {res}Chenzhou   25.125   113.125    76.69973   01jan2050   285.54437 {txt}{c |}
+  4. {c |} {res}Yongzhou   25.375   111.125   75.168007   01jan2050   285.06604 {txt}{c |}
+  5. {c |} {res}Yongzhou   25.375   111.375    56.90913   01jan2050   286.44476 {txt}{c |}
+     {c LT}{hline 10}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 11}{c RT}
+  6. {c |} {res}Yongzhou   25.375   111.625   45.657139   01jan2050   287.84082 {txt}{c |}
+  7. {c |} {res}Yongzhou   25.375   111.875   46.776157   01jan2050   286.04608 {txt}{c |}
+  8. {c |} {res}Yongzhou   25.375   112.125   59.573086   01jan2050   285.83316 {txt}{c |}
+  9. {c |} {res}Yongzhou   25.375   112.375   78.532799   01jan2050   286.43384 {txt}{c |}
+ 10. {c |} {res}Chenzhou   25.375   112.625   70.880791   01jan2050    285.7345 {txt}{c |}
+     {c BLC}{hline 10}{c -}{hline 8}{c -}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 11}{c BRC}
+
+{com}. 
+. save "hunan_80km.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+hunan_80km.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+hunan_80km.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. drop if tas==.
+{txt}(0 observations deleted)
+
+{com}. gen weight  = 1/distance
+{txt}
+{com}. gen weighted_tas = tas * weight
+{txt}
+{com}. bysort city date : egen sum_weighted_tas = total(weighted_tas)
+{txt}
+{com}. bysort city date : egen total_weight = total(weight)
+{txt}
+{com}. gen idw_tas = sum_weighted_tas / total_weight
+{txt}
+{com}. gen temp_c = idw_tas - 273.15
+{txt}
+{com}. 
+. duplicates drop city date , force
+
+{p 0 4}{txt}Duplicates in terms of {res} city date{p_end}
+
+{txt}(143,445 observations deleted)
+
+{com}. 
+. list city  distance date  temp_c in 1/10
+{txt}
+     {c TLC}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 10}{c TRC}
+     {c |} {res}   city    distance        date     temp_c {txt}{c |}
+     {c LT}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 10}{c RT}
+  1. {c |} {res}Changde    52.57518   01jan2050    7.65365 {txt}{c |}
+  2. {c |} {res}Changde    72.10421   02jan2050   7.220788 {txt}{c |}
+  3. {c |} {res}Changde    72.10421   03jan2050    8.44021 {txt}{c |}
+  4. {c |} {res}Changde   23.998957   04jan2050   6.136468 {txt}{c |}
+  5. {c |} {res}Changde   59.276711   05jan2050   7.520319 {txt}{c |}
+     {c LT}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 10}{c RT}
+  6. {c |} {res}Changde   38.741573   06jan2050   7.391534 {txt}{c |}
+  7. {c |} {res}Changde   65.434654   07jan2050   6.704889 {txt}{c |}
+  8. {c |} {res}Changde   65.515297   08jan2050   3.407739 {txt}{c |}
+  9. {c |} {res}Changde   39.140995   09jan2050   2.457117 {txt}{c |}
+ 10. {c |} {res}Changde   65.434654   10jan2050   2.555414 {txt}{c |}
+     {c BLC}{hline 9}{c -}{hline 11}{c -}{hline 11}{c -}{hline 10}{c BRC}
+
+{com}. 
+. save "hunan_IDW.dta", replace
+{txt}{p 0 4 2}
+(file {bf}
+hunan_IDW.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+hunan_IDW.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. ///IDW interpolated temperature distributions in Hunan
+> use "hunan_IDW.dta" ,clear
+{txt}
+{com}. rename city Name
+{res}{txt}
+{com}. merge m:1 Name using hunan.dta
+{res}
+{txt}{col 5}Result{col 33}Number of obs
+{col 5}{hline 41}
+{col 5}Not matched{col 30}{res}               0
+{txt}{col 5}Matched{col 30}{res}           5,110{txt}  (_merge==3)
+{col 5}{hline 41}
+
+{com}. 
+. keep if date == date("01jan2050", "DMY")
+{txt}(5,096 observations deleted)
+
+{com}. save hunan_IDW_202500101.dta, replace
+{txt}{p 0 4 2}
+(file {bf}
+hunan_IDW_202500101.dta{rm}
+not found)
+{p_end}
+{p 0 4 2}
+file {bf}
+hunan_IDW_202500101.dta{rm}
+saved
+{p_end}
+
+{com}. 
+. geoframe create region ///
+>     "hunan_IDW_202500101.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) ///
+>     replace
+{res}{txt}(creating frame {stata geoframe describe region:{bf:region}} from hunan_IDW_202500101.dta)
+(creating frame {stata geoframe describe region_shp:{bf:region_shp}} from hunan_shp.dta)
+{res}
+            {txt}Frame name: {bf:region} [{stata frame change region:make current}]
+            Frame type: {bf:attribute}
+          Feature type: <none>
+         Number of obs: {bf:14}
+               Unit ID: {bf:_ID}
+           Coordinates: {bf:_CX _CY}
+    Linked shape frame: {stata geoframe describe region_shp:{bf:region_shp}}
+
+{com}. 
+. geoplot ///
+>     (area region temp_c , color(Greys) ///
+>                 level(6, quantile weight(temp_c))) ///
+>     (line region, lwidth(vthin)), legend(position(sw))
+{res}{txt}
+{com}. 
+. graph save gragh5, replace
+{txt}{p 0 4 2}
+(file {bf}
+gragh5.gph{rm}
+not found)
+{p_end}
+{res}{txt}file {bf:gragh5.gph} saved

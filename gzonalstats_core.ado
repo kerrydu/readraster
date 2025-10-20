@@ -113,21 +113,22 @@ end
 java:
 
 // Core GeoTools libraries
-/cp gt-main-32.0.jar
-/cp gt-coverage-32.0.jar
-/cp gt-shapefile-32.0.jar
-/cp gt-geotiff-32.0.jar
-/cp gt-process-raster-32.0.jar
-/cp gt-epsg-hsql-32.0.jar
-/cp gt-epsg-extension-32.0.jar
-/cp gt-referencing-32.0.jar
-/cp gt-api-32.0.jar
-/cp gt-metadata-32.0.jar
+/cp gt-main-34.0.jar
+/cp gt-coverage-34.0.jar
+/cp gt-shapefile-34.0.jar
+/cp gt-geotiff-34.0.jar
+/cp gt-process-raster-34.0.jar
+/cp gt-epsg-hsql-34.0.jar
+/cp gt-epsg-extension-34.0.jar
+/cp gt-referencing-34.0.jar
+/cp gt-api-34.0.jar
+/cp gt-metadata-34.0.jar
 
+ 
 // External dependencies
 /cp json-simple-1.1.1.jar
-/cp commons-lang3-3.15.0.jar
-/cp commons-io-2.16.1.jar
+/cp commons-lang3-3.18.0.jar
+/cp commons-io-2.19.0.jar
 /cp jts-core-1.20.0.jar
 
 // These are all the imports you need for the grid geometry handling
@@ -343,7 +344,7 @@ public class zonalstatics {
                         System.out.println("Using intersection bounds: " + intersection);
                         
                         // Read only the minimal area needed
-                        GridCoverage2D fullGridCov = reader.read(null);
+                        GridCoverage2D fullGridCov = reader.read((org.geotools.api.parameter.GeneralParameterValue[]) null);
                         GridGeometry2D originalGeometry = fullGridCov.getGridGeometry();
                         
                         // Create the parameter for limiting the read area
@@ -381,7 +382,7 @@ public class zonalstatics {
             } catch (Exception e) {
                 System.out.println("Error reading raster with optimized parameters: " + e.getMessage());
                 System.out.println("Falling back to reading the entire raster");
-                coverage = reader.read(null); // Fall back to reading the entire raster
+                coverage = reader.read((org.geotools.api.parameter.GeneralParameterValue[]) null); // Fall back to reading the entire raster
             }
 
             // Check if we got a valid coverage

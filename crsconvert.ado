@@ -12,10 +12,10 @@ program define checkdependencies
 
 version 17
 
-cap findfile gt-main-32.0.jar
-if _rc==0 cap findfile gt-referencing-32.0.jar
-if _rc==0 cap findfile gt-epsg-hsql-32.0.jar
-if _rc==0 cap findfile gt-epsg-extension-32.0.jar
+cap findfile gt-main-34.0.jar
+//if _rc==0 cap findfile gt-referencing-32.0.jar
+//if _rc==0 cap findfile gt-epsg-hsql-32.0.jar
+//if _rc==0 cap findfile gt-epsg-extension-32.0.jar
 
 if _rc{
     cap findfile path_geotoolsjar.ado 
@@ -28,8 +28,8 @@ if _rc{
 
     path_geotoolsjar
     local path `r(path)'
-	local jars gt-main-32.0.jar gt-referencing-32.0.jar  gt-epsg-hsql-32.0.jar gt-epsg-extension-32.0.jar
-
+	//local jars gt-main-32.0.jar gt-referencing-32.0.jar  gt-epsg-hsql-32.0.jar gt-epsg-extension-32.0.jar
+    local jars gt-main-34.0.jar 
 	foreach jar in `jars' {
 	
 	    cap findfile `jar', path(`"`path'"')
