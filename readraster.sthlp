@@ -125,14 +125,13 @@ The {cmd:readraster} package includes the following commands organized by functi
 {browse "Java JDK configuration requirements:"}
 {p_end}
 
-{phang2}• {bf:Stata 17}: Recommend manual Java JDK 17 installation and configuration{p_end}
-{phang2}• {bf:Stata 18}: Uses built-in Java runtime (no additional configuration needed){p_end}
-{phang2}• {bf:Stata 19}: Require manual Java JDK 17 installation and configuration{p_end}
+{phang2}• {bf:Stata 17}: Requires manual Java JDK 17 installation and configuration{p_end}
+{phang2}• {bf:Stata 18, Stata 19}: Uses built-in Java runtime (no additional configuration needed){p_end}
 
-{dlgtab:For Stata 17 / Stata 19 Users: Configure Java JDK 17}
+{dlgtab:For Stata 17  Users: Configure Java JDK 17}s
 
 {pstd}
-If you are using Stata 17 or Stata 19, you need to download and install Java JDK 17, then configure it in Stata.
+If you are using Stata 17 , you need to download and install Java JDK 17, then configure it in Stata.
 {p_end}
 
 {dlgtab:Step 1: Download and Install Java JDK 17}
@@ -144,7 +143,7 @@ Download and install Java JDK 17 from the official Oracle website or OpenJDK dis
 {phang2}• Oracle JDK: {browse "https://www.oracle.com/java/technologies/downloads/"}{p_end}
 {phang2}• OpenJDK: {browse "https://openjdk.org/"}{p_end}
 
-{dlgtab:Step 2: Configure Java in Stata 17 / Stata 19}
+{dlgtab:Step 2: Configure Java in Stata 17 }
 
 {pstd}
 After installing Java JDK, configure the Java home directory in Stata by running:
@@ -173,7 +172,7 @@ More detailed instruction is available on {browse "https://github.com/kerrydu/re
 {p_end}
 
 
-{dlgtab:For Stata 18 Users}
+{dlgtab:For Stata 18/Stata 19 Users}
 
 {pstd}
 Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
