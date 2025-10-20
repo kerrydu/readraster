@@ -77,7 +77,7 @@ if `"`jar'"'!=""{
 }
 
 
-cap mkdir `"`c(sysdir_plus)'/p"'
+cap mkdir `"`c(sysdir_plus)'p"'
 local filename =  c(sysdir_plus) + "p/path_`adoname'.ado"
 
 local pdir = c(sysdir_plus) + "p"
