@@ -1,4 +1,12 @@
 * 2025-10-06
+cap which sjlog
+if _rc {
+    net install sjlatex, from(http://www.stata-journal.com/production) replace
+}
+
+capture log close
+sjlog using example, replace
+
 ********Example of Using readraster Package************
 cap findfile readraster.sthlp
     if _rc {
@@ -25,7 +33,7 @@ cap which geoplot
 if _rc {
    ssc install geoplot, replace
 }
-cap which moremata
+cap which lmoremata.mlib
 if _rc {
     ssc install moremata, replace
 }
@@ -33,28 +41,27 @@ cap which heatplot
 if _rc {
     ssc install heatplot, replace
 }
-cap which palettes
+cap which palettes.hlp
 if _rc {
     ssc install palettes, replace
 }
-cap which colrspace
-if _rc {
-    ssc install colrspace, replace
-}
 
-cap which sjlog
-if _rc {
-    net install sjlatex, from(http://www.stata-journal.com/production) replace
-}
+
 
 set scheme sj, permanently
+
 **********************************************************
+* downloading nc file
+cap findfile tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
 
-capture log close
-log using example.log, replace
-
+if _rc{
+	local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+				"NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
+				"tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
+				
+	copy `"`url'"' .
+}
 **************************Example of GeoTIFF********************************
-
 ************5.1 Display the Metadata************
 
 //Display the Metadata of the GeoTIFF File
@@ -87,13 +94,15 @@ sum n if x>`minX' & x<`maxX'
 local start_col = r(min)
 local n_cols = r(N)
 
-gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') size(`n_rows' `n_cols') clear
+gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') ///
+                             size(`n_rows' `n_cols') clear
 
 save DMSP-like2020.dta,replace
 
 // heatplot
 use DMSP-like2020.dta, clear
-heatplot value y x, color(Greys, reverse) level(6) xlabel(, angle(45)) 
+heatplot value y x, color(Greys, reverse) level(6) ///
+                xlabel(, angle(45)) graphr(c(white))
 
 graph save gragh1, replace
 
@@ -109,16 +118,14 @@ rename Name z_Name
 merge 1:1 z_Name using hunan_light.dta,nogen
 save hunan_light.dta, replace
 
-geoframe create region ///
- "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
- shp(hunan_shp.dta) ///
- replace
+geoframe create region     ///
+         "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+          shp(hunan_shp.dta) replace
 
 geoplot ///
- (area region avg, color(Greys, reverse) ///
-	level(6, quantile weight(avg))) ///
- (line region, lwidth(vthin)), ///
- legend(position(sw))
+    (area region avg, color(Greys, reverse) ///
+	        level(6, quantile weight(avg))) ///
+    (line region, lwidth(vthin)), legend(position(sw))
  
 graph save gragh2, replace
 
@@ -130,7 +137,8 @@ gen n=_n
 save "light_china.dta", replace
 
 use "hunan_city.dta", clear
-matchgeop ORIG_FID lat lon using light_china.dta, neighbors(n wsg84_y wsg84_x) within(80) gen(distance)
+matchgeop ORIG_FID lat lon using light_china.dta, ///
+               neighbors(n wsg84_y wsg84_x) within(80) gen(distance)
 
 merge m:1 n using light_china.dta, keep(3)
 drop _merge
@@ -152,14 +160,12 @@ save "hunan_light.dta", replace
 
 geoframe create region ///
    "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
-   shp(hunan_shp.dta) ///
-   replace
+    shp(hunan_shp.dta) replace
 
 geoplot ///
   (area region idw_light , color(Greys, reverse) ///
-  level(6, quantile weight(idw_light))) ///
-  (line region, lwidth(vthin)), ///
-  legend(position(sw))
+          level(6, quantile weight(idw_light))) ///
+  (line region, lwidth(vthin)), legend(position(sw))
 
 graph save gragh3, replace
 
@@ -168,40 +174,34 @@ graph save gragh3, replace
 ************6.1 Display the Metadata************
 
 //Display the Metadata of the NetCDF File
-////The developed commands can directly read nc files on the network. However, due to reasons such as network SSL authentication, the reading may fail. If this happens, you can copy the nc file to the local device and then perform the following corresponding operations.
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-ncdisp using `"`url'"'
+ncdisp using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
 
 //Display variable metadata with ncdisp
 ///tas variable
-ncdisp tas using `url'
+ncdisp tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
 
 ///time variable
-ncdisp time using `url'
+ncdisp time using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
 
 ************6.2 Import Raster Data into Stata************
 
 //Read the NetCDF file
-local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-            "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-            "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
 
-ncread lon using `url', clear 
+ncread lon using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
 gen n=_n 
 qui sum n if lon>=108 & lon<=115
 local lon_start = r(min)
 local lon_count = r(N)
 
-ncread lat using `url', clear 
+ncread lat using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
 gen n=_n 
 qui sum n if lat>=24 & lat<=31
 local lat_start = r(min)
 local lat_count = r(N)
 
-ncread tas using `url', clear origin(1 `lat_start' `lon_start') ///
- size(-1 `lat_count' `lon_count')
+ncread tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, ///
+                        clear origin(1 `lat_start' `lon_start') ///
+                        size(-1 `lat_count' `lon_count')
 
 gen date = time - 3650.5  + date("2050-01-01", "YMD")
 format date %td
@@ -211,23 +211,10 @@ list in 1/10
 save "grid_all.dta", replace
 
 ********6.3 Calculating Average temperature for hunan********
-// local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
-//             "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/tas/" + ///
-//             "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc"
-//			
-// ncread lon using `url', clear 
-// gen n=_n 
-// qui sum n if lon>=108 & lon<=115
-// local lon_start = r(min)
-// local lon_count = r(N)
-//
-// ncread lat using `url', clear 
-// gen n=_n 
-// qui sum n if lat>=24 & lat<=31
-// local lat_start = r(min)
-// local lat_count = r(N)
 
-zonalstats `url' using "hunan.shp", var(tas) stats(avg) origin(1 `lat_start' `lon_start') size(1 `lat_count' `lon_count') crs(EPSG:4326) clear
+zonalstats tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc using "hunan.shp", ///
+                      var(tas) stats(avg) origin(1 `lat_start' `lon_start') ///
+		              size(1 `lat_count' `lon_count') crs(EPSG:4326) clear
 replace avg = avg - 273.15
 save "hunan_temp.dta", replace
 
@@ -238,19 +225,17 @@ merge 1:1 z_Name using hunan_temp.dta,nogen
 save hunan_temp.dta, replace
 
 geoframe create region ///
- "hunan_temp.dta", id(_ID) centroids(_CX _CY) ///
- shp(hunan_shp.dta) ///
- replace
+   "hunan_temp.dta", id(_ID) centroids(_CX _CY) ///
+    shp(hunan_shp.dta) replace
 
 geoplot ///
  (area region avg, color(Greys) ///
-	level(6, quantile weight(avg))) ///
- (line region, lwidth(vthin)), ///
- legend(position(sw))
+	           level(6, quantile weight(avg))) ///
+ (line region, lwidth(vthin)), legend(position(sw))
 
 graph save gragh4, replace
 
-********6.4 Calculate 80km-radius IDW temperatures for cities********
+********6.4 Calculate 80km-radius IDW average temperatures for cities********
 use "grid_all.dta", clear
 rename lon ulon
 rename lat ulat
@@ -258,7 +243,8 @@ gen n=_n
 save "grid_all_2.dta", replace
 
 use "hunan_city.dta", clear
-matchgeop ORIG_FID lat lon using grid_all_2.dta, neighbors(n ulat ulon) within(80) gen(distance)
+matchgeop ORIG_FID lat lon using grid_all_2.dta, ///
+                     neighbors(n ulat ulon) within(80) gen(distance)
 
 merge m:1 n using grid_all_2.dta, keep(3)
 drop _merge
@@ -296,10 +282,9 @@ geoframe create region ///
 
 geoplot ///
     (area region temp_c , color(Greys) ///
-    level(6, quantile weight(temp_c))) ///
-    (line region, lwidth(vthin)), ///
-     legend(position(sw))
+                level(6, quantile weight(temp_c))) ///
+    (line region, lwidth(vthin)), legend(position(sw))
 
 graph save gragh5, replace
+sjlog close
 
-log close
