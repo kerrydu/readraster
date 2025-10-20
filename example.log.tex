@@ -1,0 +1,843 @@
+. 
+. ********Example of Using readraster Package************
+. cap findfile readraster.sthlp
+{\smallskip}
+.     if _rc {\lbr}
+.     display "change the working directory to the folder where readraster packa
+> ge is located"
+.     exit
+.     {\rbr}
+{\smallskip}
+. 
+. cap findfile DMSP-like2020.tif
+{\smallskip}
+. if _rc {\lbr}
+.    display "change the working directory to the folder where readraster packag
+> e is located"
+.    exit
+. {\rbr}
+{\smallskip}
+. ************Set up for Readraster************
+. 
+. cap findfile gt-main-32.0.jar
+{\smallskip}
+. if _rc {\lbr}
+.    display "using setup.do to install Java dependencies"
+.    display "downloading the Java dependencies requires dozen minutes and might
+>  fail due to network issues"
+.    display `"if it fails, please try again, or download the Java dependencies 
+> manually as instructed in georools_init (see {\lbr}view "geotools_init.sthlp":help 
+> geotools_init{\rbr})"'
+.    do setup.do
+. {\rbr}
+{\smallskip}
+. 
+. cap which geoplot
+{\smallskip}
+. if _rc {\lbr}
+.    ssc install geoplot, replace
+. {\rbr}
+{\smallskip}
+. cap which lmoremata.mlib
+{\smallskip}
+. if _rc {\lbr}
+.     ssc install moremata, replace
+. {\rbr}
+{\smallskip}
+. cap which heatplot
+{\smallskip}
+. if _rc {\lbr}
+.     ssc install heatplot, replace
+. {\rbr}
+{\smallskip}
+. cap which palettes.hlp
+{\smallskip}
+. if _rc {\lbr}
+.     ssc install palettes, replace
+. {\rbr}
+{\smallskip}
+. 
+. 
+. 
+. set scheme sj, permanently
+({\bftt{set scheme}} preference recorded)
+{\smallskip}
+. 
+. **********************************************************
+. * downloading nc file
+. cap findfile tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{\smallskip}
+. 
+. if _rc{\lbr}
+.         local url = "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/" + ///
+>                                 "NEX-GDDP-CMIP6/BCC-CSM2-MR/ssp245/r1i1p1f1/ta
+> s/" + ///
+>                                 "tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.n
+> c"
+.                                 
+.         copy `"`url'"' .
+. {\rbr}
+{\smallskip}
+. **************************Example of GeoTIFF********************************
+. ************5.1 Display the Metadata************
+. 
+. //Display the Metadata of the GeoTIFF File
+. gtiffdisp DMSP-like2020.tif
+{\smallskip}
+=== Band Information ===
+Number of bands: 1
+Band 1 : GRAY_INDEX           | NoData: Not defined
+{\smallskip}
+=== Spatial Characteristics ===
+X range: [-2643772.8565 {\tytilde} 2212227.1435]
+Y range: [1871896.5263 {\tytilde} 5926896.5263]
+Resolution: X=1000.0000 units/pixel, Y=1000.0000 units/pixel
+{\smallskip}
+=== Coordinate System ===
+CRS Name: PCS Name = WGS_1984_Albers
+CRS WKT: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+{\smallskip}
+=== Units ===
+X unit: m
+Y unit: m
+{\smallskip}
+=== Filtered Metadata ===
+image_height                : 4055
+image_min_x_coord           : 0
+image_width                 : 4856
+image_min_y_coord           : 0
+{\smallskip}
+. 
+. ************5.2 Import Raster Data into Stata************
+. 
+. //Read the GeoTIFF file for a specific region
+. spshape2dta hunan.shp, replace 
+  (importing .shp file)
+  (importing .dbf file)
+  (creating _ID spatial-unit id)
+  (creating _CX coordinate)
+  (creating _CY coordinate)
+{\smallskip}
+  file hunan_shp.dta created
+  file hunan.dta     created
+{\smallskip}
+. use "hunan.dta",clear
+{\smallskip}
+. crsconvert _CX _CY, gen(alber) from(hunan.shp) to(DMSP-like2020.tif)
+Converting coordinates from CRS:
+Source CRS: GEOGCS["GCS_WGS_1984", 
+  DATUM["D_WGS_1984", 
+    SPHEROID["WGS_1984", 6378137.0, 298.257223563]], 
+  PRIMEM["Greenwich", 0.0], 
+  UNIT["degree", 0.017453292519943295], 
+  AXIS["Longitude", EAST], 
+  AXIS["Latitude", NORTH]]
+Target CRS: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+{\smallskip}
+. 
+. qui sum alber_CX
+{\smallskip}
+. local maxX = r(max)+2000
+{\smallskip}
+. local minX = r(min)-2000
+{\smallskip}
+. 
+. qui sum alber_CY
+{\smallskip}
+. local maxY = r(max)+2000
+{\smallskip}
+. local minY = r(min)-2000
+{\smallskip}
+. 
+. gtiffread DMSP-like2020.tif, origin(1 1) size(-1 1) clear 
+{\smallskip}
+. gen n=_n
+{\smallskip}
+. sum n if y>`minY' \& y<`maxY'
+{\smallskip}
+    Variable {\VBAR}        Obs        Mean    Std. dev.       Min        Max
+\HLI{13}{\PLUS}\HLI{57}
+           n {\VBAR}        400      3006.5    115.6143       2807       3206
+{\smallskip}
+. local start_row = r(min)
+{\smallskip}
+. local n_rows = r(N)
+{\smallskip}
+. 
+. gtiffread DMSP-like2020.tif, origin(1 1) size(1 -1) clear 
+{\smallskip}
+. gen n=_n
+{\smallskip}
+. sum n if x>`minX' \& x<`maxX'
+{\smallskip}
+    Variable {\VBAR}        Obs        Mean    Std. dev.       Min        Max
+\HLI{13}{\PLUS}\HLI{57}
+           n {\VBAR}        385        3292    111.2842       3100       3484
+{\smallskip}
+. local start_col = r(min)
+{\smallskip}
+. local n_cols = r(N)
+{\smallskip}
+. 
+. gtiffread DMSP-like2020.tif, origin(`start_row' `start_col') ///
+>                              size(`n_rows' `n_cols') clear
+{\smallskip}
+. 
+. save DMSP-like2020.dta,replace
+file{\bftt{ DMSP-like2020.dta}} saved
+{\smallskip}
+. 
+. // heatplot
+. use DMSP-like2020.dta, clear
+{\smallskip}
+. heatplot value y x, color(Greys, reverse) level(6) ///
+>                 xlabel(, angle(45)) graphr(c(white))
+{\smallskip}
+. 
+. graph save gragh1, replace
+file {\bftt{gragh1.gph}} saved
+{\smallskip}
+. 
+. 
+. ********5.3 Calculating Average Nighttime Light Intensity for hunan********
+. zonalstats DMSP-like2020.tif using hunan.shp, stats("avg") clear
+GeoTIFF CRS detected: PCS Name = WGS_1984_Albers. User-provided CRS is ignored.
+Shapefile CRS: GCS_WGS_1984
+Reprojecting shapefile from GCS_WGS_1984 to PCS Name = WGS_1984_Albers
+Shapefile bounds for raster reading: ReferencedEnvelope[373271.4002242747 : 9187
+> 28.259838356, 2596264.786161866 : 3202467.2929103803] DefaultProjectedCRS[PCS 
+> Name = WGS_1984_Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Raster envelope: ReferencedEnvelope[-2643772.8565207715 : 2212227.1434792285, 18
+> 71896.5262559392 : 5926896.526255939] DefaultProjectedCRS[PCS Name = WGS_1984_
+> Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Using intersection bounds: ReferencedEnvelope[373271.4002242747 : 918728.2598383
+> 56, 2596264.786161866 : 3202467.2929103803] DefaultProjectedCRS[PCS Name = WGS
+> _1984_Albers] AXIS["Easting", EAST] AXIS["Northing", NORTH]
+Successfully created optimized read parameters
+Successfully read raster data with optimization
+Total features: 14
+Created string variable: z_ShiName (length 16)
+Created numeric variable: z_Shape_Leng
+Created numeric variable: z_Shape_Area
+Created string variable: z_Name (length 16)
+Created numeric variable: z_lon
+Created numeric variable: z_lat
+Created numeric variable: avg
+Data successfully exported to Stata dataset.
+{\smallskip}
+. list z_Name avg
+{\smallskip}
+     {\TLC}\HLI{25}{\TRC}
+     {\VBAR}      z_Name         avg {\VBAR}
+     {\LFTT}\HLI{25}{\RGTT}
+  1. {\VBAR}     Changde   3.2560185 {\VBAR}
+  2. {\VBAR}    Chenzhou   2.0607766 {\VBAR}
+  3. {\VBAR}    Hengyang   3.2285136 {\VBAR}
+  4. {\VBAR}     Huaihua   1.2616182 {\VBAR}
+  5. {\VBAR}       Loudi   3.7707743 {\VBAR}
+     {\LFTT}\HLI{25}{\RGTT}
+  6. {\VBAR}    Shaoyang   1.7991827 {\VBAR}
+  7. {\VBAR}    Xiangtan   7.2288051 {\VBAR}
+  8. {\VBAR}     Xiangxi    1.458301 {\VBAR}
+  9. {\VBAR}      Yiyang   2.4555944 {\VBAR}
+ 10. {\VBAR}    Yongzhou   2.0996052 {\VBAR}
+     {\LFTT}\HLI{25}{\RGTT}
+ 11. {\VBAR}     Yueyang   3.8674934 {\VBAR}
+ 12. {\VBAR} Zhangjiajie   1.7823899 {\VBAR}
+ 13. {\VBAR}    Changsha   11.616603 {\VBAR}
+ 14. {\VBAR}     Zhuzhou   3.8699787 {\VBAR}
+     {\BLC}\HLI{25}{\BRC}
+{\smallskip}
+. save "hunan_light.dta", replace
+file{\bftt{ hunan_light.dta}} saved
+{\smallskip}
+. 
+. use hunan.dta, clear
+{\smallskip}
+. 
+. rename Name z_Name  
+{\smallskip}
+. merge 1:1 z_Name using hunan_light.dta,nogen
+(variable {\bftt{z_Name}} was {\bftt{str11}}, now {\bftt{str16}} to accommodate using data's values)
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                                14  
+    \HLI{41}
+{\smallskip}
+. save hunan_light.dta, replace
+file{\bftt{ hunan_light.dta}} saved
+{\smallskip}
+. 
+. geoframe create region     ///
+>          "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+>           shp(hunan_shp.dta) replace
+(creating frame {\bftt{region}} from hunan_light.dta)
+(creating frame {\bftt{region_shp}} from hunan_shp.dta)
+{\smallskip}
+            Frame name: {\bftt{region}} [make current]
+            Frame type: {\bftt{attribute}}
+          Feature type: <none>
+         Number of obs: {\bftt{14}}
+               Unit ID: {\bftt{_ID}}
+           Coordinates: {\bftt{_CX _CY}}
+    Linked shape frame: {\bftt{region_shp}}
+{\smallskip}
+. 
+. geoplot ///
+>     (area region avg, color(Greys, reverse) ///
+>                 level(6, quantile weight(avg))) ///
+>     (line region, lwidth(vthin)), legend(position(sw))
+{\smallskip}
+.  
+. graph save gragh2, replace
+file {\bftt{gragh2.gph}} saved
+{\smallskip}
+. 
+. ********5.4 Calculate 80km-radius IDW light for cities********
+. 
+. use "DMSP-like2020.dta", clear
+{\smallskip}
+. crsconvert x y, gen(wsg84_) from(DMSP-like2020.tif) to(hunan.shp)
+Converting coordinates from CRS:
+Source CRS: PROJCS["PCS Name = WGS_1984_Albers", 
+  GEOGCS["WGS 84", 
+    DATUM["World Geodetic System 1984", 
+      SPHEROID["WGS 84", 6378137.0, 298.257223563, AUTHORITY["EPSG","7030"]], 
+      AUTHORITY["EPSG","6326"]], 
+    PRIMEM["Greenwich", 0.0, AUTHORITY["EPSG","8901"]], 
+    UNIT["degree", 0.017453292519943295], 
+    AXIS["Geodetic longitude", EAST], 
+    AXIS["Geodetic latitude", NORTH], 
+    AUTHORITY["EPSG","4326"]], 
+  PROJECTION["Albers_Conic_Equal_Area"], 
+  PARAMETER["central_meridian", 105.0], 
+  PARAMETER["latitude_of_origin", 0.0], 
+  PARAMETER["standard_parallel_1", 25.0], 
+  PARAMETER["false_easting", 0.0], 
+  PARAMETER["false_northing", 0.0], 
+  PARAMETER["standard_parallel_2", 47.0], 
+  UNIT["m", 1.0], 
+  AXIS["Easting", EAST], 
+  AXIS["Northing", NORTH]]
+Target CRS: GEOGCS["GCS_WGS_1984", 
+  DATUM["D_WGS_1984", 
+    SPHEROID["WGS_1984", 6378137.0, 298.257223563]], 
+  PRIMEM["Greenwich", 0.0], 
+  UNIT["degree", 0.017453292519943295], 
+  AXIS["Longitude", EAST], 
+  AXIS["Latitude", NORTH]]
+{\smallskip}
+. gen n=_n
+{\smallskip}
+. save "light_china.dta", replace
+file{\bftt{ light_china.dta}} saved
+{\smallskip}
+. 
+. use "hunan_city.dta", clear
+{\smallskip}
+. matchgeop ORIG_FID lat lon using light_china.dta, ///
+>                neighbors(n wsg84_y wsg84_x) within(80) gen(distance)
+{\smallskip}
+. 
+. merge m:1 n using light_china.dta, keep(3)
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                           206,615  (_merge==3)
+    \HLI{41}
+{\smallskip}
+. drop _merge
+{\smallskip}
+. 
+. drop if value==.
+(0 observations deleted)
+{\smallskip}
+. gen weight  = 1/distance
+{\smallskip}
+. gen weighted_light = value * weight
+{\smallskip}
+. bysort city: egen sum_weighted_light = total(weighted_light)
+{\smallskip}
+. bysort city: egen total_weight = total(weight)
+{\smallskip}
+. gen idw_light = sum_weighted_light / total_weight
+{\smallskip}
+. 
+. duplicates drop city, force
+{\smallskip}
+Duplicates in terms of city
+{\smallskip}
+(206,601 observations deleted)
+{\smallskip}
+. 
+. ///IDW interpolated light distributions in Hunan
+> rename city Name
+{\smallskip}
+. merge m:1 Name using hunan.dta
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                                14  (_merge==3)
+    \HLI{41}
+{\smallskip}
+. 
+. save "hunan_light.dta", replace
+file{\bftt{ hunan_light.dta}} saved
+{\smallskip}
+. 
+. geoframe create region ///
+>    "hunan_light.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) replace
+(creating frame {\bftt{region}} from hunan_light.dta)
+(creating frame {\bftt{region_shp}} from hunan_shp.dta)
+{\smallskip}
+            Frame name: {\bftt{region}} [make current]
+            Frame type: {\bftt{attribute}}
+          Feature type: <none>
+         Number of obs: {\bftt{14}}
+               Unit ID: {\bftt{_ID}}
+           Coordinates: {\bftt{_CX _CY}}
+    Linked shape frame: {\bftt{region_shp}}
+{\smallskip}
+. 
+. geoplot ///
+>   (area region idw_light , color(Greys, reverse) ///
+>           level(6, quantile weight(idw_light))) ///
+>   (line region, lwidth(vthin)), legend(position(sw))
+{\smallskip}
+. 
+. graph save gragh3, replace
+file {\bftt{gragh3.gph}} saved
+{\smallskip}
+. 
+. **************************Example of NetCDF********************************
+. 
+. ************6.1 Display the Metadata************
+. 
+. //Display the Metadata of the NetCDF File
+. ncdisp using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{\smallskip}
+=== File Structure ===
+{\smallskip}
+[Global Attributes]
+_NCProperties            : version=1|netcdflibversion=4.4.1.1|hdf5libversi...
+activity                 : NEX-GDDP-CMIP6
+contact                  : Dr. Rama Nemani: rama.nemani@nasa.gov, Dr. Brid...
+Conventions              : CF-1.7
+creation_date            : 2021-10-04T14:25:12.081609+00:00
+frequency                : day
+institution              : NASA Earth Exchange, NASA Ames Research Center,...
+variant_label            : r1i1p1f1
+product                  : output
+realm                    : atmos
+source                   : BCSD
+scenario                 : ssp245
+references               : BCSD method: Thrasher et al., 2012, Hydrol. Ear...
+version                  : 1.0
+tracking_id              : 6ab2a874-d3fe-484a-a7e8-82df448e364f
+title                    : BCC-CSM2-MR, r1i1p1f1, ssp245, global downscale...
+resolution_id            : 0.25 degree
+history                  : 2021-10-04T14:25:12.081609+00:00: install globa...
+disclaimer               : This data is considered provisional and subject...
+external_variables       : areacella
+cmip6_source_id          : BCC-CSM2-MR
+cmip6_institution_id     : BCC
+cmip6_license            : CC-BY-SA 4.0
+_CoordSysBuilder         : ucar.nc2.internal.dataset.conv.CF1Convention
+{\smallskip}
+[Dimensions]
+Name                 Length   Attribute      
+time                 365      Coordinate     
+lat                  600      Coordinate     
+lon                  1440     Coordinate     
+{\smallskip}
+[Variables]
+Name                      Dimensions                     Type           
+tas                       time lat lon                   float          
+time                      time                           double         
+lat                       lat                            double         
+lon                       lon                            double         
+{\smallskip}
+[Groups]
+{\smallskip}
+. 
+. //Display variable metadata with ncdisp
+. ///tas variable
+> ncdisp tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{\smallskip}
+=== Dimensions ===
+Dimension       Length   Coordinate     
+time            365      [Yes]          
+lat             600      [Yes]          
+lon             1440     [Yes]          
+{\smallskip}
+=== Scale/Offset Parameters ===
+missing value  : 100000002004087730000.000000 (Type: float)
+ FillValue     : 100000002004087730000.000000 (Type: float)
+{\smallskip}
+=== Attributes ===
+missing_value       : 1.0E20
+cell_measures       : area: areacella
+cell_methods        : area: mean time: maximum (interval: 5 minutes)
+original_name       : TREFHTMX
+comment             : near-surface (usually, 2 meter) air temperature; derived f
+> rom downscaled tasmax \& tasmin
+units               : K
+long_name           : Daily Near-Surface Air Temperature
+standard_name       : air_temperature
+_FillValue          : 1.0E20
+_ChunkSizes         : 1
+{\smallskip}
+=== Metadata ===
+Units          : K (original: K)
+{\smallskip}
+Shape          : [365, 600, 1440]
+Data Type      : float
+{\smallskip}
+=== Variable Structure ===
+Name: tas                       Type: float          
+{\smallskip}
+. 
+. ///time variable
+> ncdisp time using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc
+{\smallskip}
+=== Dimensions ===
+Dimension       Length   Coordinate     
+time            365      [Yes]          
+{\smallskip}
+=== Scale/Offset Parameters ===
+{\smallskip}
+=== Attributes ===
+units               : days since 2040-01-01
+standard_name       : time
+long_name           : time
+calendar            : 365_day
+axis                : T
+_ChunkSizes         : 365
+_CoordinateAxisType : Time
+{\smallskip}
+=== Metadata ===
+Units          : days since 2040-01-01 (original: days since 2040-01-01)
+{\smallskip}
+Shape          : [365]
+Data Type      : double
+{\smallskip}
+=== Variable Structure ===
+Name: time                      Type: double         
+{\smallskip}
+. 
+. ************6.2 Import Raster Data into Stata************
+. 
+. //Read the NetCDF file
+. 
+. ncread lon using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
+Sucessfully import 1440 Obs into Stata.
+{\smallskip}
+. gen n=_n 
+{\smallskip}
+. qui sum n if lon>=108 \& lon<=115
+{\smallskip}
+. local lon_start = r(min)
+{\smallskip}
+. local lon_count = r(N)
+{\smallskip}
+. 
+. ncread lat using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, clear 
+Sucessfully import 600 Obs into Stata.
+{\smallskip}
+. gen n=_n 
+{\smallskip}
+. qui sum n if lat>=24 \& lat<=31
+{\smallskip}
+. local lat_start = r(min)
+{\smallskip}
+. local lat_count = r(N)
+{\smallskip}
+. 
+. ncread tas using tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc, ///
+>                         clear origin(1 `lat_start' `lon_start') ///
+>                         size(-1 `lat_count' `lon_count')
+{\smallskip}
+{\smallskip}
+Sucessfully import 286160 Obs into Stata.
+{\smallskip}
+. 
+. gen date = time - 3650.5  + date("2050-01-01", "YMD")
+{\smallskip}
+. format date \%td
+{\smallskip}
+. 
+. list in 1/10
+{\smallskip}
+     {\TLC}\HLI{51}{\TRC}
+     {\VBAR}   time      lat       lon         tas        date {\VBAR}
+     {\LFTT}\HLI{51}{\RGTT}
+  1. {\VBAR} 3650.5   24.125   108.125   288.02673   01jan2050 {\VBAR}
+  2. {\VBAR} 3650.5   24.125   108.375   289.05478   01jan2050 {\VBAR}
+  3. {\VBAR} 3650.5   24.125   108.625   288.97476   01jan2050 {\VBAR}
+  4. {\VBAR} 3650.5   24.125   108.875   288.53751   01jan2050 {\VBAR}
+  5. {\VBAR} 3650.5   24.125   109.125   289.27686   01jan2050 {\VBAR}
+     {\LFTT}\HLI{51}{\RGTT}
+  6. {\VBAR} 3650.5   24.125   109.375   290.04214   01jan2050 {\VBAR}
+  7. {\VBAR} 3650.5   24.125   109.625   289.90146   01jan2050 {\VBAR}
+  8. {\VBAR} 3650.5   24.125   109.875   290.08304   01jan2050 {\VBAR}
+  9. {\VBAR} 3650.5   24.125   110.125   286.86743   01jan2050 {\VBAR}
+ 10. {\VBAR} 3650.5   24.125   110.375   287.87402   01jan2050 {\VBAR}
+     {\BLC}\HLI{51}{\BRC}
+{\smallskip}
+. 
+. save "grid_all.dta", replace
+file{\bftt{ grid_all.dta}} saved
+{\smallskip}
+. 
+. ********6.3 Calculating Average temperature for hunan********
+. 
+. zonalstats tas_day_BCC-CSM2-MR_ssp245_r1i1p1f1_gn_2050.nc using "hunan.shp", /
+> //
+>                       var(tas) stats(avg) origin(1 `lat_start' `lon_start') //
+> /
+>                               size(1 `lat_count' `lon_count') crs(EPSG:4326) c
+> lear
+NetCDF variable 'tas' type: float
+NetCDF variable 'tas' missing value attribute: 1.0E20 (type: float)
+NetCDF CRS not detected. Using user-provided CRS: EPSG:4326
+Coordinate systems are compatible, no reprojection needed
+Created numeric variable: avg
+Data successfully exported to Stata dataset.
+{\smallskip}
+. replace avg = avg - 273.15
+(14 real changes made)
+{\smallskip}
+. save "hunan_temp.dta", replace
+file{\bftt{ hunan_temp.dta}} saved
+{\smallskip}
+. 
+. use hunan.dta, clear
+{\smallskip}
+. 
+. rename Name z_Name  
+{\smallskip}
+. merge 1:1 z_Name using hunan_temp.dta,nogen
+(variable {\bftt{z_Name}} was {\bftt{str11}}, now {\bftt{str16}} to accommodate using data's values)
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                                14  
+    \HLI{41}
+{\smallskip}
+. save hunan_temp.dta, replace
+file{\bftt{ hunan_temp.dta}} saved
+{\smallskip}
+. 
+. geoframe create region ///
+>    "hunan_temp.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) replace
+(creating frame {\bftt{region}} from hunan_temp.dta)
+(creating frame {\bftt{region_shp}} from hunan_shp.dta)
+{\smallskip}
+            Frame name: {\bftt{region}} [make current]
+            Frame type: {\bftt{attribute}}
+          Feature type: <none>
+         Number of obs: {\bftt{14}}
+               Unit ID: {\bftt{_ID}}
+           Coordinates: {\bftt{_CX _CY}}
+    Linked shape frame: {\bftt{region_shp}}
+{\smallskip}
+. 
+. geoplot ///
+>  (area region avg, color(Greys) ///
+>                    level(6, quantile weight(avg))) ///
+>  (line region, lwidth(vthin)), legend(position(sw))
+{\smallskip}
+. 
+. graph save gragh4, replace
+file {\bftt{gragh4.gph}} saved
+{\smallskip}
+. 
+. ********6.4 Calculate 80km-radius IDW average temperatures for cities********
+. use "grid_all.dta", clear
+{\smallskip}
+. rename lon ulon
+{\smallskip}
+. rename lat ulat
+{\smallskip}
+. gen n=_n
+{\smallskip}
+. save "grid_all_2.dta", replace
+file{\bftt{ grid_all_2.dta}} saved
+{\smallskip}
+. 
+. use "hunan_city.dta", clear
+{\smallskip}
+. matchgeop ORIG_FID lat lon using grid_all_2.dta, ///
+>                      neighbors(n ulat ulon) within(80) gen(distance)
+{\smallskip}
+. 
+. merge m:1 n using grid_all_2.dta, keep(3)
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                           148,555  (_merge==3)
+    \HLI{41}
+{\smallskip}
+. drop _merge
+{\smallskip}
+. 
+. list city ulat ulon distance date tas in 1/10
+{\smallskip}
+     {\TLC}\HLI{65}{\TRC}
+     {\VBAR}     city     ulat      ulon    distance        date         tas {\VBAR}
+     {\LFTT}\HLI{65}{\RGTT}
+  1. {\VBAR} Yongzhou   25.125   111.625   72.995079   01jan2050   287.24945 {\VBAR}
+  2. {\VBAR} Yongzhou   25.125   111.875   73.701637   01jan2050    284.2619 {\VBAR}
+  3. {\VBAR} Chenzhou   25.125   113.125    76.69973   01jan2050   285.54437 {\VBAR}
+  4. {\VBAR} Yongzhou   25.375   111.125   75.168007   01jan2050   285.06604 {\VBAR}
+  5. {\VBAR} Yongzhou   25.375   111.375    56.90913   01jan2050   286.44476 {\VBAR}
+     {\LFTT}\HLI{65}{\RGTT}
+  6. {\VBAR} Yongzhou   25.375   111.625   45.657139   01jan2050   287.84082 {\VBAR}
+  7. {\VBAR} Yongzhou   25.375   111.875   46.776157   01jan2050   286.04608 {\VBAR}
+  8. {\VBAR} Yongzhou   25.375   112.125   59.573086   01jan2050   285.83316 {\VBAR}
+  9. {\VBAR} Yongzhou   25.375   112.375   78.532799   01jan2050   286.43384 {\VBAR}
+ 10. {\VBAR} Chenzhou   25.375   112.625   70.880791   01jan2050    285.7345 {\VBAR}
+     {\BLC}\HLI{65}{\BRC}
+{\smallskip}
+. 
+. save "hunan_80km.dta", replace
+file{\bftt{ hunan_80km.dta}} saved
+{\smallskip}
+. 
+. drop if tas==.
+(0 observations deleted)
+{\smallskip}
+. gen weight  = 1/distance
+{\smallskip}
+. gen weighted_tas = tas * weight
+{\smallskip}
+. bysort city date : egen sum_weighted_tas = total(weighted_tas)
+{\smallskip}
+. bysort city date : egen total_weight = total(weight)
+{\smallskip}
+. gen idw_tas = sum_weighted_tas / total_weight
+{\smallskip}
+. gen temp_c = idw_tas - 273.15
+{\smallskip}
+. 
+. duplicates drop city date , force
+{\smallskip}
+Duplicates in terms of city date
+{\smallskip}
+(143,445 observations deleted)
+{\smallskip}
+. 
+. list city  distance date  temp_c in 1/10
+{\smallskip}
+     {\TLC}\HLI{44}{\TRC}
+     {\VBAR}    city    distance        date     temp_c {\VBAR}
+     {\LFTT}\HLI{44}{\RGTT}
+  1. {\VBAR} Changde   38.741573   01jan2050    7.65365 {\VBAR}
+  2. {\VBAR} Changde   39.140995   02jan2050   7.220788 {\VBAR}
+  3. {\VBAR} Changde   61.902889   03jan2050    8.44021 {\VBAR}
+  4. {\VBAR} Changde   35.447414   04jan2050   6.136468 {\VBAR}
+  5. {\VBAR} Changde    75.76696   05jan2050   7.520319 {\VBAR}
+     {\LFTT}\HLI{44}{\RGTT}
+  6. {\VBAR} Changde   63.030872   06jan2050   7.391534 {\VBAR}
+  7. {\VBAR} Changde   39.613548   07jan2050   6.704889 {\VBAR}
+  8. {\VBAR} Changde   58.544605   08jan2050   3.407739 {\VBAR}
+  9. {\VBAR} Changde   39.613548   09jan2050   2.457117 {\VBAR}
+ 10. {\VBAR} Changde   75.469879   10jan2050   2.555414 {\VBAR}
+     {\BLC}\HLI{44}{\BRC}
+{\smallskip}
+. 
+. save "hunan_IDW.dta", replace
+file{\bftt{ hunan_IDW.dta}} saved
+{\smallskip}
+. 
+. ///IDW interpolated temperature distributions in Hunan
+> use "hunan_IDW.dta" ,clear
+{\smallskip}
+. rename city Name
+{\smallskip}
+. merge m:1 Name using hunan.dta
+{\smallskip}
+    Result                      Number of obs
+    \HLI{41}
+    Not matched                             0
+    Matched                             5,110  (_merge==3)
+    \HLI{41}
+{\smallskip}
+. 
+. keep if date == date("01jan2050", "DMY")
+(5,096 observations deleted)
+{\smallskip}
+. save hunan_IDW_202500101.dta, replace
+file{\bftt{ hunan_IDW_202500101.dta}} saved
+{\smallskip}
+. 
+. geoframe create region ///
+>     "hunan_IDW_202500101.dta", id(_ID) centroids(_CX _CY) ///
+>     shp(hunan_shp.dta) ///
+>     replace
+(creating frame {\bftt{region}} from hunan_IDW_202500101.dta)
+(creating frame {\bftt{region_shp}} from hunan_shp.dta)
+{\smallskip}
+            Frame name: {\bftt{region}} [make current]
+            Frame type: {\bftt{attribute}}
+          Feature type: <none>
+         Number of obs: {\bftt{14}}
+               Unit ID: {\bftt{_ID}}
+           Coordinates: {\bftt{_CX _CY}}
+    Linked shape frame: {\bftt{region_shp}}
+{\smallskip}
+. 
+. geoplot ///
+>     (area region temp_c , color(Greys) ///
+>                 level(6, quantile weight(temp_c))) ///
+>     (line region, lwidth(vthin)), legend(position(sw))
+{\smallskip}
+. 
+. graph save gragh5, replace
+file {\bftt{gragh5.gph}} saved
