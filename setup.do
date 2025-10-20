@@ -15,7 +15,7 @@ else netcdf_init, download plus(netcdf)
 cap findfile geotools-32.0-bin.zip, path(`"`c(pwd)'"')
 if _rc==0{
      unzipfile geotools-32.0-bin.zip
-     geotools_init `c(pwd)'geotools-32.0/lib, plus(geotools) 
+     geotools_init `c(pwd)'/geotools-32.0/lib, plus(geotools) 
 }
 else geotools_init, plus(geotools) download
 
