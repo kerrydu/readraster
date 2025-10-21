@@ -21,7 +21,7 @@ if _rc {
 }
 ************Set up for Readraster************
 
-cap findfile gt-main-32.0.jar
+cap findfile gt-main-34.0.jar
 if _rc {
    display "using setup.do to install Java dependencies"
    display "downloading the Java dependencies requires dozen minutes and might fail due to network issues"
