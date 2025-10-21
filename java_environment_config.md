@@ -23,7 +23,7 @@ Download and install Java JDK 17 from one of the following sources:
 
 Select the JDK installation package for the corresponding operating system.
 
-![](https://github.com/tricia1353/picture/blob/develop/jdk17-download.png)
+![](https://github.com/tricia1353/picture/blob/main/jdk17-download.png)
 
 #### Step 2: Configure Java in Stata
 
@@ -38,7 +38,7 @@ Replace `path_to_java_home_dir` with the actual path to your Java JDK installati
 - Windows: `"C:\Program Files\Java\jdk-17"`
 - Linux: `"/usr/lib/jvm/java-17-openjdk-amd64"`
 
-![](https://github.com/tricia1353/picture/blob/develop/set_home.png)
+![](https://github.com/tricia1353/picture/blob/main/set_home.png)
 
 #### Step 3: Verify Configuration
 
@@ -47,7 +47,7 @@ Verify the Java configuration by running:
 ```stata
 . java query
 ```
-![](https://github.com/tricia1353/picture/blob/develop/java%20query.png)
+![](https://github.com/tricia1353/picture/blob/main/java%20query.png)
 
 
 Note: the default JDK version can be restored by running:
@@ -80,7 +80,7 @@ For simplified setup, use the dedicated initialization command:
 1. Manually download GeoTools 34.0 from:  
    [https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip](https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip)
 
-   <img width="2492" height="1350" alt="image" src="https://github.com/user-attachments/assets/30f68ee7-3083-4fc1-9bf9-521fc8d1de59" />
+   <img width="2492" height="1350" alt="image" src="https://github.com/tricia1353/picture/blob/main/geotools34_download.png" />
 
 
 3. Unzip the downloaded file
@@ -95,7 +95,7 @@ Replace `path_to_geotools-34.0/lib` with the actual file path to your unzipped G
 
 For example, in my Win11 PC, the path is as follows.
 
-<img width="1795" height="1164" alt="image" src="https://github.com/user-attachments/assets/aace78e3-eee9-4f6f-8d05-59c6d7dbc0f2" />
+![](https://github.com/tricia1353/picture/blob/main/geotools34_path.png)
 
 Then, path_to_geotools-34.0/lib is "C:\Users\kerry\Desktop\Download\geotools-34.0\lib".
 

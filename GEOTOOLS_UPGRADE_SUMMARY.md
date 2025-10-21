@@ -33,7 +33,7 @@ GeoTools 34 works with standard ImageIO plus TwelveMonkeys plugins (no ImageN/JA
 
 ### 3. NetCDF Library Update
 Updated NetCDF library version to match GeoTools 34 requirements:
-- `netcdfAll-5.9.1.jar` → `netcdfAll-5.5.3.jar`
+- ~~`netcdfAll-5.9.1.jar` → `netcdfAll-5.5.3.jar`~~
 
 ## Key Requirements for GeoTools 34
 
@@ -48,7 +48,7 @@ Updated NetCDF library version to match GeoTools 34 requirements:
 
 ### Dependencies
 - Eclipse ImageN 0.9.0 replaces JAI 1.1.3
-- NetCDF 5.5.3 is the recommended version for GeoTools 34
+- ~~NetCDF 5.5.3 is the recommended version for GeoTools 34~~
 - All other dependencies (JTS, Commons libraries) remain the same
 
 ## Testing Recommendations
