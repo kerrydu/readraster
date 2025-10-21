@@ -113,16 +113,16 @@ end
 java:
 
 // Core GeoTools libraries
+/cp gt-metadata-34.0.jar
+/cp gt-api-34.0.jar
 /cp gt-main-34.0.jar
-/cp gt-coverage-34.0.jar
-/cp gt-shapefile-34.0.jar
-/cp gt-geotiff-34.0.jar
-/cp gt-process-raster-34.0.jar
+/cp gt-referencing-34.0.jar
 /cp gt-epsg-hsql-34.0.jar
 /cp gt-epsg-extension-34.0.jar
-/cp gt-referencing-34.0.jar
-/cp gt-api-34.0.jar
-/cp gt-metadata-34.0.jar
+/cp gt-geotiff-34.0.jar
+/cp gt-coverage-34.0.jar
+/cp gt-process-raster-34.0.jar
+/cp gt-shapefile-34.0.jar
 
  
 // External dependencies

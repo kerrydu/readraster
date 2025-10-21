@@ -286,5 +286,5 @@ geoplot ///
     (line region, lwidth(vthin)), legend(position(sw))
 
 graph save gragh5, replace
-sjlog close
+sjlog close,replace
 
