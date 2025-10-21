@@ -8,7 +8,7 @@ if `c(version)'<18{
 	gettoken jv : jdk, p(.)
     if `jv'<17{
       di as error "Stata 17 requires manually installing JDK 17"
-	  di "See help readraster for configuring JDK 17 before using this command"
+	  di "See" `"{help readraster:help readraster}"' "for configuring JDK 17 before using this command"
 	  exit
     }
 
