@@ -1,6 +1,19 @@
 *! version 1.1, 2025-09-21
 program define geotools_init
-version 16.0
+version 17.0
+
+if `c(version)'<18{
+	java query
+	local jdk `r(version)'
+	gettoken jv : jdk, p(.)
+    if `jv'<17{
+      di as error "Stata 17 requires manually installing JDK 17"
+	  di "See help readraster for configuring JDK 17 before using this command"
+	  exit
+    }
+
+}
+
 syntax [anything] , [download dir(string) plus(string)]
 
 if "`download'"!=""{
