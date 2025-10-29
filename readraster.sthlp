@@ -168,7 +168,7 @@ You can restore the default JDK version by running:
 {phang2}{cmd:.  java set home default}{p_end}
 
 {pstd}
-More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/develop/java_environment_config.md"}
+More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/develop/javaenvconfig.md"}
 {p_end}
 
 
