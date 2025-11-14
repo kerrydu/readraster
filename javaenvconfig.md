@@ -10,7 +10,7 @@ The `readraster` package requires Java runtime environment and specific Java lib
 
 - **Stata 17**: Requires manual installation and configuration of Java JDK 17 
 - **Stata 18**: Includes built-in Java runtime environment (no additional configuration needed)
-- **Stata 19**: Includes built-in Java runtime environment (no additional configuration needed)
+- **Stata 19**: Requires manual installation and configuration of Java JDK 17
 
 ### For Stata 17 
 
@@ -57,7 +57,7 @@ Note: the default JDK version can be restored by running:
 ```
 
 
-### For Stata 18/Stata 19 Users
+### For Stata 18 19 Users
 
 Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
 
