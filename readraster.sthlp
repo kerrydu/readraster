@@ -125,10 +125,10 @@ The {cmd:readraster} package includes the following commands organized by functi
 {browse "Java JDK configuration requirements:"}
 {p_end}
 
-{phang2}• {bf:Stata 17}: Requires manual Java JDK 17 installation and configuration{p_end}
-{phang2}• {bf:Stata 18, Stata 19}: Uses built-in Java runtime (no additional configuration needed){p_end}
+{phang2}• {bf:Stata 17 and Stata 19}: Requires manual Java JDK 17 installation and configuration{p_end}
+{phang2}• {bf:Stata 18}: Uses built-in Java runtime (no additional configuration needed){p_end}
 
-{dlgtab:For Stata 17  Users: Configure Java JDK 17}s
+{dlgtab:For Stata 17 and Stata 19 Users: Configure Java JDK 17}s
 
 {pstd}
 If you are using Stata 17 , you need to download and install Java JDK 17, then configure it in Stata.
@@ -172,7 +172,7 @@ More detailed instruction is available on {browse "https://github.com/kerrydu/re
 {p_end}
 
 
-{dlgtab:For Stata 18/Stata 19 Users}
+{dlgtab:For Stata 18 Users}
 
 {pstd}
 Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
