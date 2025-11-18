@@ -1,20 +1,48 @@
 *! version 1.1, 2025-09-21
 program define geotools_init
 version 17.0
+syntax [anything] , [download dir(string) plus(string) compiled]
 
 if `c(version)'<18{
 	java query
 	local jdk `r(version)'
+	if "`jdk'"==""  {
+		java initialize
+		java query
+		local jdk `r(version)'
+	}
 	gettoken jv : jdk, p(.)
-    if `jv'<17{
+    if `jv'<17 {
       di as error "Stata 17 requires manually installing JDK 17"
 	  di "See " `"{help readraster:help readraster}"' " for configuring JDK 17 before using this command"
+	  exit
+    }
+}
+else if `c(version)'>18{
+	java query
+	local jdk `r(version)'
+	if "`jdk'"==""  {
+		java initialize
+		java query
+		local jdk `r(version)'
+	}
+	gettoken jv : jdk, p(.)
+    if `jv'>=21 &  "`compiled'"=="" {
+      di as error "For Stata 19 there are two ways to use this package"
+      di  "(1) Manually install JDK 17 and set it as the JAVA_HOME in Stata"
+	  di       "See " `"{help readraster:help readraster}"' " for configuring JDK 17 before using this command"
+	  di   "(2) Download the precompiled Jar file by the following command"
+				"geotools_init, compiled"
 	  exit
     }
 
 }
 
-syntax [anything] , [download dir(string) plus(string)]
+
+if "`compiled'"!=""{
+	net install readrasterjar, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)
+	exit
+}
 
 if "`download'"!=""{
 
