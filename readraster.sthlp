@@ -73,7 +73,6 @@ Downloading demo code and data from Github:
 {phang2}{cmd:. net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)}{p_end}
 
 
-
 {marker commands}{...}
 {title:Available Commands}
 
@@ -114,10 +113,46 @@ The {cmd:readraster} package includes the following commands organized by functi
 {help geotools_init:geotools_init} - Configurate GeoTools Java library for GeoTIFF operations
 
 {phang2}
-{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for GeoTIFF operations
+{help netcdf_init:netcdf_init} - Configurate NetCDF Java library for NetCDF operations
 
 {marker setup}{...}
 {title:Setup Java dependencies}
+
+{dlgtab:Overview}
+
+{pstd}
+The {cmd:readraster} package requires Java runtime environment and specific Java libraries to handle geospatial raster data processing.
+{p_end}
+
+{pstd}
+{bf:We offer two distinct methods to use the package:}
+{p_end}
+
+{phang2}1) Via our precompiled JARs{p_end}
+{phang2}2) Via JShell with Java source code{p_end}
+
+{pstd}
+{bf:For method 1) via precompiled JARs (Recommended):}
+{p_end}
+
+{pstd}
+Java JDK 17 or JDK 21 is required and the precompiled jars can be downloaded by:
+{p_end}
+
+{phang2}{cmd:. geotools_init, compiled}{p_end}
+{phang2}{cmd:. netcdf_init, compiled}{p_end}
+
+{pstd}
+Note: Stata 17 is bundled with JDK 11, so users are required to manually install and configure JDK 17. See the following instruction for the configuration of JDK 17 in Stata 17.
+{p_end}
+
+{pstd}
+{bf:For method 2) via JShell with Java source code:}
+{p_end}
+
+{pstd}
+JDK 17 and specific Java libraries are required. See the following instruction for GeoTools and NetCDF library setup.
+{p_end}
 
 {dlgtab:Java JDK Configuration}
 
@@ -128,10 +163,10 @@ The {cmd:readraster} package includes the following commands organized by functi
 {phang2}• {bf:Stata 17 and Stata 19}: Requires manual Java JDK 17 installation and configuration{p_end}
 {phang2}• {bf:Stata 18}: Uses built-in Java runtime (no additional configuration needed){p_end}
 
-{dlgtab:For Stata 17 and Stata 19 Users: Configure Java JDK 17}s
+{dlgtab:For Stata 17 and Stata 19 Users: Configure Java JDK 17}
 
 {pstd}
-If you are using Stata 17 , you need to download and install Java JDK 17, then configure it in Stata.
+If you are using Stata 17 or Stata 19, you need to download and install Java JDK 17, then configure it in Stata.
 {p_end}
 
 {dlgtab:Step 1: Download and Install Java JDK 17}
@@ -143,7 +178,7 @@ Download and install Java JDK 17 from the official Oracle website or OpenJDK dis
 {phang2}• Oracle JDK: {browse "https://www.oracle.com/java/technologies/downloads/"}{p_end}
 {phang2}• OpenJDK: {browse "https://openjdk.org/"}{p_end}
 
-{dlgtab:Step 2: Configure Java in Stata 17 }
+{dlgtab:Step 2: Configure Java in Stata 17 and Stata 19}
 
 {pstd}
 After installing Java JDK, configure the Java home directory in Stata by running:
@@ -175,50 +210,67 @@ More detailed instruction is available on {browse "https://github.com/kerrydu/re
 {dlgtab:For Stata 18 Users}
 
 {pstd}
-Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
+Stata 18 includes a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
 {p_end}
 
 {dlgtab:GeoTools Library Setup}
 
 {pstd}
-Before using the commands {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert}, you first need to download the GeoTools Version 34.0 Java library.
-Once downloaded, place this library in Stata's adopath—or add the library's file path to Stata's adopath.
+The GeoTools library (Version 34.0) is required for GeoTIFF file operations including {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert} commands.
 {p_end}
 
+{dlgtab:Automated Setup (Recommended)}
+
 {pstd}
-For a simplified setup, we provide a dedicated command: {cmd:geotools_init}.
-To configure the environment automatically, simply run the following line in Stata:
+For simplified setup, use the dedicated initialization command:
 {p_end}
 
 {phang2}{cmd:. geotools_init, download plus(geotools)}{p_end}
 
 {pstd}
-Note that this process may take dozens of minutes—Stata’s speed for copying large files from the internet is relatively slow.
+Note: This process may take several minutes as Stata downloads files from the internet.
+{p_end}
+
+{dlgtab:Manual Setup (Faster Alternative)}
+
+{pstd}
+1. Manually download GeoTools 34.0 from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip"}
 {p_end}
 
 {pstd}
-As a faster alternative, we recommend manually downloading the GeoTools library from {browse "https://master.dl.sourceforge.net/project/geotools/GeoTools%2034%20Releases/34.0/geotools-34.0-bin.zip"} and unzipping the downloaded file. After doing so, initialize the environment by running:
+2. Unzip the downloaded file
+{p_end}
+
+{pstd}
+3. Initialize the environment by running:
 {p_end}
 
 {phang2}{cmd:. geotools_init} {it:path_to_geotools-34.0/lib}{cmd:, plus(geotools)}{p_end}
 
 {pstd}
-Note that you should replace {it:path_to_geotools-34.0/lib} with the actual file path to your unzipped GeoTools 34.0 lib folder.
+Replace {it:path_to_geotools-34.0/lib} with the actual file path to your unzipped GeoTools 34.0 lib folder.
+{p_end}
+
+{dlgtab:NetCDF Library Setup}
+
+{pstd}
+The NetCDF library (Version 5.9.1) is required for NetCDF file operations including {cmd:ncdisp} and {cmd:ncread} commands.
 {p_end}
 
 {pstd}
-Before using the commands {cmd:ncdisp} and {cmd:ncread}, you first need to download the NetCDF Version 5.9.1 Java library.
+The NetCDF library can be downloaded from: {browse "https://downloads.unidata.ucar.edu/netcdf-java/5.9.1/netcdfAll-5.9.1.jar"}
 {p_end}
 
+{dlgtab:Automated Setup}
+
 {pstd}
-For a simplified setup, we provide a dedicated command: {cmd:netcdf_init}.
-To configure the environment automatically, simply run the following line in Stata:
+For simplified setup, use the dedicated initialization command:
 {p_end}
 
 {phang2}{cmd:. netcdf_init, download plus(netcdf)}{p_end}
 
 {pstd}
-* The configuration described above is only required the first time you use the package.
+Note: The configuration described above is only required the first time you use the package.
 {p_end}
 
 {marker examples}{...}
@@ -308,5 +360,3 @@ For bug reports, feature requests, or contributions, please visit the GitHub rep
 {pstd}Ruipeng Tan{p_end}
 {pstd}School of Economics, Hefei University of Technology, China{p_end}
 {pstd}Email: tanruipeng@hfut.edu.cn{p_end}
-
-
