@@ -3,6 +3,12 @@ cap program drop gtiffdisp
 program define gtiffdisp,rclass
 version 17
 
+cap findfile readraster-all-1.0.0-fat.jar
+if !_rc {
+    gtiffdisp_2 `0'
+    exit
+}
+
 checkdependencies
 gtiffdisp_core `0'
 
@@ -66,6 +72,61 @@ if `rc'{
 
 
 
+end
+
+
+cap program drop gtiffdisp_2
+program define gtiffdisp_2,rclass
+version 17
+
+syntax anything
+
+local using `anything'
+
+removequotes,file(`using')
+
+local using = usubinstr(`"`using'"',"\","/",.)
+// 判断路径是否为绝对路径
+if !strmatch("`using'", "*:/*") & !strmatch("`using'", "/*") {
+    // 如果是相对路径，拼接当前工作目录
+    local using = "`c(pwd)'/`using'"
+}
+local using = usubinstr(`"`using'"',"\","/",.)
+
+local rc = fileexists("`using'")
+if `rc'==0{
+	di as error `"`using'" NOT found'
+	exit
+}
+
+// Use consolidated Java via javacall (ReadRasterAll.gtiffInfo)
+// Per user request: only use fat jar, no path, and no existence checks.
+// Ensure the fat jar file is placed in the current working directory or on Stata's search path.
+local jar_fat readraster-all-1.0.0-fat.jar
+
+// Clear previous Java classloader cache
+cap noisily java clear
+
+// Invoke
+capture noisily javacall org.readraster.ReadRasterAll method1, jars("`jar_fat'") args("gtiffInfo" "`using'")
+
+
+ /// Optionally return Stata scalars here if needed; Java already sets scalars via SFIToolkit.Scalar
+   return scalar nband = bands
+   return scalar ncol = width
+   return scalar nrow = height
+   return scalar minX = minX
+   return scalar minY = minY
+   return scalar Xcellsize = xRes
+   return scalar Ycellsize = yRes 
+
+end
+
+cap program drop removequotes
+program define removequotes,rclass
+    version 16
+    syntax, file(string) 
+    return local file `file'
 end
 
 ////////////////////

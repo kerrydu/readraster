@@ -1,7 +1,7 @@
 cap program drop nzonalstats_core
 program define nzonalstats_core
 version 17
-syntax anything using/, [STATs(string) var(string) clear origin(numlist integer >0) size(numlist integer) crs(string)]
+syntax anything using/, origin(numlist integer >0) size(numlist integer) [STATs(string) var(string) clear  crs(string)]
 
 // Check if clear option is provided when data is in memory
 if "`clear'"=="" {
