@@ -21,6 +21,7 @@ help for {hi:netcdf_init}
 {synopt :{opt download}}specify downloading netcdfALL-5.9.1.jar{p_end}
 {synopt :{opt dir(string)}}specify the target directory for downloading netcdfALL-5.9.1.jar{p_end}
 {synopt :{opt plus(string)}}copy netcdfALL-5.9.1.jar to the specified folder in sysdir_plus{p_end}
+{synopt :{opt compiled}}specify downloading the precompiled jar{p_end}
 
 {synoptline}
  
@@ -29,10 +30,20 @@ help for {hi:netcdf_init}
 {title:Examples}
 
 {phang}
+The most easy way to use the netcdf related commands is downloading the precompiled jar which 
+bundles the necessary dependencies. Simply run the following command.
+
+{p 12 16 2}
+{cmd:. netcdf_init compiled}{break}
+
+{phang}
+The following examples are shown for running Java source code in Jshell within Stata.
+
+{phang}
 1. Manually downloading netcdfALL-5.9.1.jar and add the current directory into Stata adopath:
 
 {p 12 16 2}
-{cmd:.copy https://downloads.unidata.ucar.edu/netcdf-java/5.9.1/netcdfAll-5.9.1.jar .}{break}
+{cmd:.copy https://downloads.unidata.ucar.edu/netcdf-java/5.9.1/netcdfAll-5.9.1.jar }{break}
 
 {p 12 16 2}
 {cmd:.netcdf_init}{break}
