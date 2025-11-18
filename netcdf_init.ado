@@ -39,7 +39,7 @@ else if `c(version)'>18{
 }
 
 if "`compiled'"!=""{
-	net install NetCDFUtils.pkg, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/")
+	net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/")
 	exit
 }
 
