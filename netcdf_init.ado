@@ -18,7 +18,7 @@ if `c(version)'<18{
 	  exit
     }
 }
-else if `c(version)'>18{
+else if `c(version)'>=19{
 	java query
 	local jdk `r(version)'
 	if "`jdk'"==""  {
