@@ -44,8 +44,11 @@ Users only need to initialize the Java dependencies upon their first use. And if
 {marker examples}{...}
 {title:Examples}
 
-{pstd}To use the precompiled jar which bundles the necessary dependencies, simply run the following line:{p_end}
+{pstd}The most easy way to use the geotools-related commands is downloading the precompiled jar 
+which bundles the necessary dependencies. Simply run the following line:{p_end}
 {phang2}{cmd:. geotools_init, compiled}{p_end}
+
+{pstd}The following examples are shown for run Java source code in Jshell within Stata{p_end}
 
 {pstd}To configure the environment automatically, simply run the following line:{p_end}
 {phang2}{cmd:. geotools_init, download plus(geotools)}{p_end}
