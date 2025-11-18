@@ -23,6 +23,8 @@ help for {hi:geotools_init}
 {synopt :{opt download}}specify downloading GeoTools 34.0 library from SourceForge{p_end}
 {synopt :{opt dir(string)}}specify the directory where GeoTools should be downloaded (defaults to current directory){p_end}
 {synopt :{opt plus(string)}}copy JAR files to the specified folder in sysdir_plus{p_end}
+{synopt :{opt compiled}}specify downloading the precompiled jar{p_end}
+
 
 {synoptline}
 
@@ -41,6 +43,9 @@ Users only need to initialize the Java dependencies upon their first use. And if
 
 {marker examples}{...}
 {title:Examples}
+
+{pstd}To use the precompiled jar which bundles the necessary dependencies, simply run the following line:{p_end}
+{phang2}{cmd:. geotools_init, compiled}{p_end}
 
 {pstd}To configure the environment automatically, simply run the following line:{p_end}
 {phang2}{cmd:. geotools_init, download plus(geotools)}{p_end}
