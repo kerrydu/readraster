@@ -1,0 +1,3 @@
+org.geotools.processing.jai.TransparencyFillSpi
+org.eclipse.imagen.media.jiffleop.JiffleSpi
+org.jaitools.media.jai.vectorize.VectorizeSpi

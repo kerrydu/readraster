@@ -1,0 +1,3 @@
+org.geotools.filter.function.DefaultFunctionFactory
+org.geotools.process.function.ProcessFunctionFactory
+org.geotools.process.geometry.PolygonLabelFunctionFactory

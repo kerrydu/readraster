@@ -1,0 +1,366 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.readraster'
+version = '1.0.0'
+
+// Directory containing local jars; can override with -PlibsDir=...
+def libsDir = (project.findProperty('libsDir') ?: 'C:/Users/kerry/Desktop/geotools') as String
+def projectLibDir = new File(project.projectDir, 'lib')
+
+java {
+    // Use the system JDK; align with installed JDK 17
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    // Use local jars and Maven Central for any missing runtime deps
+    mavenCentral()
+}
+
+dependencies {
+    // Use local project lib folder for normal builds
+    implementation fileTree(
+            dir: projectLibDir,
+            include: ['**/*.jar'],
+            exclude: ['**/*-sources.jar', '**/*-javadoc.jar', '**/*tests*.jar']
+    )
+
+    // Linear algebra needed by GeoTools referencing stack
+    implementation 'org.ejml:ejml-core:0.43.1'
+    implementation 'org.ejml:ejml-ddense:0.43.1'
+    implementation 'org.ejml:ejml-simple:0.43.1'
+
+    // NetCDF Java regex dependency
+    implementation 'com.google.re2j:re2j:1.7'
+}
+
+// Produce a standalone fat JAR including all runtime dependencies
+tasks.register('fatJar', Jar) {
+    archiveBaseName.set('readraster-all')
+    archiveClassifier.set('fat')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Include compiled classes/resources
+    from sourceSets.main.output
+
+    // Prepare merged Service Provider files to ensure all SPI registrations survive shading
+    def mergedServicesDir = new File(buildDir, "tmp/merged-services-fat")
+    def mergedRegistriesDir = new File(buildDir, "tmp/merged-registries-fat")
+
+    // Add all runtime dependency contents, but exclude original service descriptors
+    from {
+        configurations.runtimeClasspath
+                .filter { it.exists() }
+                .collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    { exclude 'META-INF/services/**', 'META-INF/*registryFile*.jai', 'META-INF/**/registryFile*.jai' }
+
+    // Include merged service descriptors
+    from { mergedServicesDir }
+    from { mergedRegistriesDir }
+
+    // Preserve service descriptors; strip only signatures
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+
+    // (Optional) Uncomment to make runnable
+    // manifest { attributes('Main-Class': 'org.readraster.ReadRasterAll') }
+
+    doFirst {
+        // Build merged META-INF/services files across all dependencies
+        if (mergedServicesDir.exists()) project.delete(mergedServicesDir)
+        mergedServicesDir.mkdirs()
+
+        def svcMap = [:].withDefault { new LinkedHashSet<String>() }
+
+        configurations.runtimeClasspath.filter { it.exists() && it.name.endsWith('.jar') }.each { File jf ->
+            new java.util.zip.ZipFile(jf).withCloseable { zip ->
+                zip.entries().findAll { it.name.startsWith('META-INF/services/') && !it.isDirectory() }.each { ent ->
+                    def key = ent.name
+                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
+                    reader.lines().forEach { ln ->
+                        def t = ln.trim()
+                        if (t && !t.startsWith('#')) svcMap[key] << t
+                    }
+                    reader.close()
+                }
+            }
+        }
+
+        // Write merged files
+        svcMap.each { path, lines ->
+            def outFile = new File(mergedServicesDir, path)
+            outFile.parentFile.mkdirs()
+            outFile.text = lines.join(System.lineSeparator()) + System.lineSeparator()
+        }
+
+        // Build merged JAI/Eclipse Imagen registry files so all operations (e.g., ImageRead) register
+        if (mergedRegistriesDir.exists()) project.delete(mergedRegistriesDir)
+        mergedRegistriesDir.mkdirs()
+        def regOut = new File(mergedRegistriesDir, 'META-INF/registryFile.jai')
+        def regOutImagen = new File(mergedRegistriesDir, 'META-INF/org.eclipse.imagen.registryFile.jai')
+        regOut.parentFile.mkdirs()
+        regOutImagen.parentFile.mkdirs()
+        def regBuilder = new StringBuilder()
+        regBuilder.append('# Merged by fatJar task\n')
+
+        def isRegistry = { String n ->
+            (n ==~ /META-INF\/registryFile\.jai/ ||
+             n ==~ /META-INF\/org\.eclipse\.imagen\.registryFile\.jai/ ||
+             n ==~ /META-INF\/.*registryFile.*\.jai/ ||
+             n ==~ /META-INF\/imagen\/.*registryFile.*\.jai/)
+        }
+
+        configurations.runtimeClasspath.filter { it.exists() && it.name.endsWith('.jar') }.each { File jf ->
+            new java.util.zip.ZipFile(jf).withCloseable { zip ->
+                zip.entries().findAll { isRegistry(it.name) && !it.isDirectory() }.each { ent ->
+                    regBuilder.append("\n# from ").append(jf.name).append('!').append(ent.name).append('\n')
+                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
+                    reader.lines().forEach { ln -> regBuilder.append(ln).append('\n') }
+                    reader.close()
+                }
+            }
+        }
+        def regText = regBuilder.toString()
+        regOut.text = regText
+        regOutImagen.text = regText
+
+        def files = configurations.runtimeClasspath.findAll { it.exists() }
+        def total = files.collect { it.length() }.sum(0L)
+        println "[fatJar] Including ${files.size()} artifacts (~${Math.round(total/1024/1024)} MB)"
+        println "[fatJar] Merged ${svcMap.size()} service descriptors"
+        println "[fatJar] Wrote merged registry file with ${regBuilder.toString().readLines().size()} lines"
+    }
+}
+
+// A slimmer variant that drops clearly unnecessary modules (DB drivers, web/WFS/WMS, sample data, etc.)
+tasks.register('fatJarSlim', Jar) {
+    archiveBaseName.set('readraster-all')
+    archiveClassifier.set('slim')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from sourceSets.main.output
+
+    def slimDropGlobs = [
+            'wiremock-standalone-*.jar',
+            'sqlite-jdbc-*.jar',
+            'mysql-connector-*.jar',
+            'ojdbc*.jar',
+            'postgresql-*.jar',
+            'mongodb-*.jar', 'mongodb-driver*.jar',
+            'gt-sample-data-*.jar',
+            'gt-wms*.jar', 'gt-wfs*.jar', 'gt-wmts*.jar', 'gt-app-schema*.jar',
+            'gt-geopkg*.jar', 'gt-geopackage*.jar', 'gt-jdbc*.jar',
+            'gt-xml*.jar', 'gt-xsd-*.jar',
+            'ehcache-*.jar',
+            // Optional decoders rarely needed for basic NetCDF/GeoTIFF usage
+            'bufr-*.jar', 'grib-*.jar', 'protobuf-java-*.jar'
+    ]
+
+    def isGlobMatch = { String name, String glob ->
+        def regex = '^' + java.util.regex.Pattern.quote(glob).replace("\\*", ".*") + '$'
+        return name ==~ regex
+    }
+
+    def runtimeFiles = configurations.runtimeClasspath.filter { it.exists() }
+    def slimFiles = runtimeFiles.findAll { f ->
+        !(['**/*-sources.jar','**/*-javadoc.jar','**/*tests*.jar']
+                .any { ex -> isGlobMatch(f.name, ex.replace('**/','')) }) &&
+        !slimDropGlobs.any { g -> isGlobMatch(f.name, g) }
+    }
+
+    from { slimFiles.collect { it.isDirectory() ? it : zipTree(it) } }
+
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+
+    doFirst {
+        def total = slimFiles.collect { it.length() }.sum(0L)
+        println "[fatJarSlim] Including ${slimFiles.size()} artifacts (~${Math.round(total/1024/1024)} MB)"
+        slimFiles.each { println "  - ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
+    }
+}
+
+// Default to building fat jar when running 'build'
+tasks.build { dependsOn tasks.fatJar }
+
+// Auto-select minimal set of GeoTools 34 + required libs from libsDir
+tasks.register('fatJarAuto', Jar) {
+    archiveBaseName.set('readraster-all')
+    archiveClassifier.set('auto')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from sourceSets.main.output
+
+    def allJars = fileTree(dir: libsDir, include: ['**/*.jar']).files.toList()
+    def nameLc = { File f -> f.name.toLowerCase(Locale.ROOT) }
+
+    // Keep list tailored to ReadRasterAll usage (Shapefile, GeoTIFF, CRS, ZonalStats, NetCDF)
+        def keepTokens = [
+            // GeoTools core
+            'gt-api', 'gt-main', 'gt-metadata', 'gt-referencing', 'gt-grid',
+            'gt-coverage', 'gt-coverage-api', 'gt-geotiff', 'gt-shapefile',
+            'gt-process', 'gt-process-raster',
+            // Referencing and EPSG
+            'gt-epsg-extension', 'gt-epsg-hsql', 'hsqldb-',
+            // NetCDF (UCAR)
+            'cdm-core', 'netcdf4', 'udunits', 'opendap',
+            // Geometry & utils
+            'jts-core', 'guava-', 'commons-io', 'commons-lang3', 'commons-collections', 'commons-collections4', 'commons-logging',
+            // JSON/XML commonly needed by UCAR/GT
+            'jackson-annotations', 'jackson-core', 'jackson-databind',
+            'xml-commons-resolver', 'jdom2-',
+            // HTTP client used by UCAR sometimes
+            'httpclient-', 'httpcore-', 'httpmime-',
+            // ImageIO TIFF helpers
+            'imageio-ext-tiff', 'imageio-ext-utilities', 'imageio-ext-streams', 'imageio-ext-geocore',
+            // COG readers required by GeoTiffReader initialization
+            'imageio-ext-cog-commons', 'imageio-ext-cog-reader', 'imageio-ext-cog-streams',
+            // Stata SFI (if present locally)
+            'sfi-api'
+    ].collect { it.toLowerCase(Locale.ROOT) }
+
+    def isDocOrTest = { String n -> n.endsWith('-sources.jar') || n.endsWith('-javadoc.jar') || n.contains('tests') }
+    def shouldKeep = { File f ->
+        def n = nameLc(f)
+        isDocOrTest(n) ? false : keepTokens.any { n.contains(it) }
+    }
+
+    def kept = allJars.findAll(shouldKeep)
+    from { kept.collect { it.isDirectory() ? it : zipTree(it) } }
+
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+
+    doFirst {
+        def dropped = allJars - kept
+        def sum = { files -> files.collect { it.length() }.sum(0L) }
+        println "[fatJarAuto] libsDir=${libsDir}"
+        println "[fatJarAuto] Including ${kept.size()} jars (~${Math.round(sum(kept)/1024/1024)} MB)"
+        println "[fatJarAuto] Dropped ${dropped.size()} jars (~${Math.round(sum(dropped)/1024/1024)} MB)"
+        println "[fatJarAuto] Top kept:"; kept.sort { -it.length() }.take(20).each { println "  + ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
+        println "[fatJarAuto] Top dropped:"; dropped.sort { -it.length() }.take(20).each { println "  x ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
+    }
+}
+
+// Copy only the jars kept by fatJarAuto rules into project ./lib (cleans first)
+tasks.register('syncMinimalLibs') {
+    doLast {
+        if (!projectLibDir.exists()) projectLibDir.mkdirs()
+
+        def allJars = fileTree(dir: libsDir, include: ['**/*.jar']).files.toList()
+        def nameLc = { File f -> f.name.toLowerCase(Locale.ROOT) }
+
+        def keepTokens = [
+                'gt-api', 'gt-main', 'gt-metadata', 'gt-referencing', 'gt-grid',
+                'gt-coverage', 'gt-coverage-api', 'gt-geotiff', 'gt-shapefile',
+                'gt-process', 'gt-process-raster',
+                'gt-epsg-extension', 'gt-epsg-hsql', 'hsqldb-',
+            'gt-epsg-wkt',
+                'cdm-core', 'netcdf4', 'udunits', 'opendap',
+                'jts-core', 'guava-', 'commons-io', 'commons-lang3', 'commons-collections', 'commons-collections4', 'commons-logging',
+                'jackson-annotations', 'jackson-core', 'jackson-databind',
+                'xml-commons-resolver', 'jdom2-',
+                'httpclient-', 'httpcore-', 'httpmime-',
+            'imageio-ext-tiff', 'imageio-ext-utilities', 'imageio-ext-streams', 'imageio-ext-geocore',
+            // Add Cloud Optimized GeoTIFF support (was previously omitted causing NoClassDefFoundError for CogSourceSPIProvider)
+            'imageio-ext-cog-commons', 'imageio-ext-cog-reader', 'imageio-ext-cog-streams',
+            // Eclipse IMAGEN core and common operators used by GeoTools coverage operations
+            'imagen-core', 'affine-', 'algebra-', 'bandcombine', 'bandmerge', 'bandselect', 'binarize', 'border-', 'buffer-',
+            'classbreaks', 'classifier', 'colorconvert', 'colorindexer', 'concurrent-tile-cache', 'contour', 'convolve', 'crop-',
+            'errordiffusion', 'format-', 'imagefunction', 'imageread', 'iterators', 'jiffle-language', 'jiffle-op', 'lookup-',
+            'mosaic-', 'nullop-', 'orderdither', 'piecewise', 'rendered-image-browser', 'rescale', 'rlookup', 'scale-', 'scale2',
+            'shadedrelief', 'stats-', 'translate', 'utilities-', 'vectorbin', 'vectorize', 'warp-', 'zonal-',
+            // Units of measurement stack
+            'unit-api', 'indriya', 'uom-lib-common', 'systems-common', 'si-quantity', 'si-units',
+                'sfi-api'
+        ].collect { it.toLowerCase(Locale.ROOT) }
+
+        def isDocOrTest = { String n -> n.endsWith('-sources.jar') || n.endsWith('-javadoc.jar') || n.contains('tests') }
+        def shouldKeep = { File f ->
+            def n = nameLc(f)
+            isDocOrTest(n) ? false : keepTokens.any { n.contains(it) }
+        }
+
+        def kept = allJars.findAll(shouldKeep)
+        // Clean current lib first
+        projectLibDir.listFiles(new FilenameFilter() { boolean accept(File d, String name){ name.toLowerCase().endsWith('.jar') } })?.each { it.delete() }
+        // Copy kept jars
+        copy {
+            from kept
+            into projectLibDir
+        }
+        println "Synced ${kept.size()} jars to ${projectLibDir}"
+    }
+}
+
+// One-shot: sync minimal libs then build fat jar against ./lib
+tasks.register('rebuildMinimalFatJar') {
+    dependsOn 'syncMinimalLibs', 'clean', 'fatJar'
+}
+
+// Run runtime environment smoke checks
+tasks.register('smokeRun', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'org.readraster.EnvSmokeCheck'
+}
+
+// Export excluded jars (those not kept by fatJarAuto rules) to a Markdown file
+tasks.register('exportExcludedJarsMd') {
+    doLast {
+        def allJars = fileTree(dir: libsDir, include: ['**/*.jar']).files.toList()
+        def nameLc = { File f -> f.name.toLowerCase(Locale.ROOT) }
+
+        def keepTokens = [
+                'gt-api', 'gt-main', 'gt-metadata', 'gt-referencing', 'gt-grid',
+                'gt-coverage', 'gt-coverage-api', 'gt-geotiff', 'gt-shapefile',
+                'gt-process', 'gt-process-raster',
+                'gt-epsg-extension', 'gt-epsg-hsql', 'hsqldb-',
+            'gt-epsg-wkt',
+                'cdm-core', 'netcdf4', 'udunits', 'opendap',
+                'jts-core', 'guava-', 'commons-io', 'commons-lang3', 'commons-collections', 'commons-collections4', 'commons-logging',
+                'jackson-annotations', 'jackson-core', 'jackson-databind',
+                'xml-commons-resolver', 'jdom2-',
+                'httpclient-', 'httpcore-', 'httpmime-',
+                'imageio-ext-tiff', 'imageio-ext-utilities', 'imageio-ext-streams', 'imageio-ext-geocore',
+                // COG readers required by GeoTiffReader initialization
+                'imageio-ext-cog-commons', 'imageio-ext-cog-reader', 'imageio-ext-cog-streams',
+                'sfi-api'
+        ].collect { it.toLowerCase(Locale.ROOT) }
+
+        def isDocOrTest = { String n -> n.endsWith('-sources.jar') || n.endsWith('-javadoc.jar') || n.contains('tests') }
+        def shouldKeep = { File f ->
+            def n = nameLc(f)
+            isDocOrTest(n) ? false : keepTokens.any { n.contains(it) }
+        }
+
+        def kept = allJars.findAll(shouldKeep)
+        def dropped = (allJars - kept).sort { -it.length() }
+
+        def sum = { files -> files.collect { it.length() }.sum(0L) }
+        def mb = { long bytes -> (bytes / (1024.0*1024.0)) }
+        def now = new Date()
+
+        def sb = new StringBuilder()
+        sb << '# Excluded JARs\n\n'
+        sb << "- libsDir: ${libsDir}\n"
+        sb << "- Generated: ${now}\n"
+        sb << "- Total jars: ${allJars.size()}\n"
+        sb << String.format("- Kept: %d (%.1f MB)\n", kept.size(), mb(sum(kept)))
+        sb << String.format("- Dropped: %d (%.1f MB)\n\n", dropped.size(), mb(sum(dropped)))
+
+        sb << '| Name | Size (MB) | Full Path |\n'
+        sb << '| --- | ---: | --- |\n'
+        dropped.each { File f ->
+            sb << String.format('| %s | %.1f | %s |\n', f.name, mb(f.length()), f.absolutePath)
+        }
+
+        def outFile = new File(project.projectDir, 'EXCLUDED_JARS.md')
+        outFile.text = sb.toString()
+        println "Wrote ${outFile.absolutePath}"
+    }
+}
