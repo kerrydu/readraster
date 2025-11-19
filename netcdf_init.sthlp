@@ -31,13 +31,13 @@ help for {hi:netcdf_init}
 
 {phang}
 The most easy way to use the netcdf related commands is downloading the precompiled jar which 
-bundles the necessary dependencies. Simply run the following command.
+bundles the necessary dependencies. This is the recommended approach for most users, especially those using Stata 19 with Java 21+. Simply run the following command.
 
 {p 12 16 2}
-{cmd:. netcdf_init compiled}{break}
+{cmd:. netcdf_init, compiled}{break}
 
 {phang}
-The following examples are shown for running Java source code in Jshell within Stata.
+The following examples are shown for running Java source code in Jshell within Stata. And it need to download full library installation.
 
 {phang}
 1. Manually downloading netcdfALL-5.9.1.jar and add the current directory into Stata adopath:
