@@ -264,7 +264,7 @@ Note: The configuration described above is only required the first time you use 
 
 {dlgtab:update the package}
 
-{phang2}{cmd:. readraster}{p_end}
+{phang2}{cmd:. readraster, update}{p_end}
 
 {dlgtab:Basic GeoTIFF Operations}
 
