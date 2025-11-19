@@ -34,6 +34,14 @@ The toolkit exposes seven commands that follow the workflow described in the man
   - `crsconvert` converts x/y coordinate pairs between CRSs specified by EPSG codes or reference files
   - `matchgeop` finds nearest neighbours between point datasets using great-circle distance (kilometres or miles)
 
+
+## Update
+After the first installization， the package can be updated via:
+
+```
+readraster, update
+```
+
 ## Workflow Snapshot
 
 Section 3 of the manuscript explains how the commands work together:
