@@ -8,7 +8,7 @@ The `readraster` package requires Java runtime environment and specific Java lib
 
 ----------------
 
-**For 1) via our precompiled JARs, Java JDK 17 or JDK 21 is required and the precompiled jars can be downloaded by**
+**For mehtod 1) via our precompiled JARs, Java JDK 17 or JDK 21 is required and the precompiled jars can be downloaded by**
 
 ```
 geotools_init, compiled
@@ -17,13 +17,13 @@ netcdf_init, compiled
 
 Note Stata 17 is bundled with JDK 11 so that users are required to manually install and configurate JDK 17. See the following instruction for the configuration of JDK 17 in Stata 17.
 
-
+**For Chinese users, the resource in Github.com might not be accessable directly within Stata. Thus, the method 2) is recommended.**
 
 ----------------
 
 
 
-**For 2) via JShell with Java source code, JDK 17  specific Java libraries are required. See the following instruction.**
+**For  method 2) via JShell with Java source code, JDK 17  specific Java libraries are required. See the following instruction.**
 
 ## Java JDK Configuration
 
