@@ -191,7 +191,7 @@ You can verify the Java configuration by running:
 You can restore the default JDK version by running:
 {p_end}
 
-{phang2}{cmd:.  java set home default}{p_end}
+{phang2}{cmd:. java set home default}{p_end}
 
 {pstd}
 More detailed instruction is available on {browse "https://github.com/kerrydu/readraster/blob/develop/javaenvconfig.md"}
@@ -260,6 +260,11 @@ Note: The configuration described above is only required the first time you use 
 
 {marker examples}{...}
 {title:Examples}
+
+
+{dlgtab:update the package}
+
+{phang2}{cmd:. readraster}{p_end}
 
 {dlgtab:Basic GeoTIFF Operations}
 
