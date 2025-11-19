@@ -20,9 +20,12 @@ if _rc {
    exit
 }
 ************Set up for Readraster************
-
+cap findfile readraster-all-1.0.0-fat.jar
+local rjar = _rc
+cap findfile NetCDFUtils-complete.jar
+local njar = _rc
 cap findfile gt-main-34.0.jar
-if _rc {
+if _rc & `rjar' {
    display "using setup.do to install Java dependencies"
    display "downloading the Java dependencies requires dozen minutes and might fail due to network issues"
    display `"if it fails, please try again, or download the Java dependencies manually as instructed in georools_init (see {view "geotools_init.sthlp":help geotools_init})"'
