@@ -6,7 +6,7 @@ syntax [anything] , [download dir(string) plus(string) compiled]
 if `c(version)'<18{
 	java query
 	local jdk `r(version)'
-	if "`jdk'"==""  {
+	if "`jdk'"=="" | "`jdk'"=="."{
 		java initialize
 		java query
 		local jdk `r(version)'
@@ -21,7 +21,7 @@ if `c(version)'<18{
 else if `c(version)'>=19{
 	java query
 	local jdk `r(version)'
-	if "`jdk'"==""  {
+	if "`jdk'"=="" | "`jdk'"=="." {
 		java initialize
 		java query
 		local jdk `r(version)'
