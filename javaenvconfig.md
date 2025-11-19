@@ -29,13 +29,13 @@ Note Stata 17 is bundled with JDK 11 so that users are required to manually inst
 
 ### Stata Version Requirements
 
-- **Stata 17**: Requires manual installation and configuration of Java JDK 17 
+- **Stata 17**: Requires manual installation and configuration of Java JDK 17. Required for both methods 1) and 2) in Stata 17
 - **Stata 18**: Includes built-in Java runtime environment (no additional configuration needed)
-- **Stata 19**: Requires manual installation and configuration of Java JDK 17 
+- **Stata 19**: Requires manual installation and configuration of Java JDK 17. Only required for method 2)
 
 ### For Stata 17 
 
-#### Step 1: Download and Install Java JDK 17
+#### Step 1: Download and Install Java JDK 17 
 
 Download and install Java JDK 17 from one of the following sources:
 
@@ -78,7 +78,7 @@ Note: the default JDK version can be restored by running:
 ```
 
 
-### For Stata 18 19 Users
+### For Stata 18 Users
 
 Stata 18 and later versions include a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
 
