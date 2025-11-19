@@ -154,19 +154,10 @@ Note: Stata 17 is bundled with JDK 11, so users are required to manually install
 JDK 17 and specific Java libraries are required. See the following instruction for GeoTools and NetCDF library setup.
 {p_end}
 
-{dlgtab:Java JDK Configuration}
+{dlgtab:Configure Java JDK 17}
 
 {pstd}
-{browse "Java JDK configuration requirements:"}
-{p_end}
-
-{phang2}• {bf:Stata 17 and Stata 19}: Requires manual Java JDK 17 installation and configuration{p_end}
-{phang2}• {bf:Stata 18}: Uses built-in Java runtime (no additional configuration needed){p_end}
-
-{dlgtab:For Stata 17 and Stata 19 Users: Configure Java JDK 17}
-
-{pstd}
-If you are using Stata 17 or Stata 19, you need to download and install Java JDK 17, then configure it in Stata.
+If you are using Stata 17 or Stata 19, you need to download and install Java JDK 17, then configure it in Stata. Stata 18 includes a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
 {p_end}
 
 {dlgtab:Step 1: Download and Install Java JDK 17}
@@ -178,7 +169,7 @@ Download and install Java JDK 17 from the official Oracle website or OpenJDK dis
 {phang2}• Oracle JDK: {browse "https://www.oracle.com/java/technologies/downloads/"}{p_end}
 {phang2}• OpenJDK: {browse "https://openjdk.org/"}{p_end}
 
-{dlgtab:Step 2: Configure Java in Stata 17 and Stata 19}
+{dlgtab:Step 2: Configure Java}
 
 {pstd}
 After installing Java JDK, configure the Java home directory in Stata by running:
@@ -207,13 +198,7 @@ More detailed instruction is available on {browse "https://github.com/kerrydu/re
 {p_end}
 
 
-{dlgtab:For Stata 18 Users}
-
-{pstd}
-Stata 18 includes a compatible Java runtime environment. No additional Java JDK installation or configuration is required.
-{p_end}
-
-{dlgtab:GeoTools Library Setup}
+{dlgtab:GeoTools Library Setup via JShell with Java source code}
 
 {pstd}
 The GeoTools library (Version 34.0) is required for GeoTIFF file operations including {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert} commands.
@@ -251,7 +236,7 @@ Note: This process may take several minutes as Stata downloads files from the in
 Replace {it:path_to_geotools-34.0/lib} with the actual file path to your unzipped GeoTools 34.0 lib folder.
 {p_end}
 
-{dlgtab:NetCDF Library Setup}
+{dlgtab:NetCDF Library Setup via JShell with Java source code}
 
 {pstd}
 The NetCDF library (Version 5.9.1) is required for NetCDF file operations including {cmd:ncdisp} and {cmd:ncread} commands.
