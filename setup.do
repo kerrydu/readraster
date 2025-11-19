@@ -4,8 +4,10 @@ display "******Download Java dependency for readraster*******"
 display "******The dowloading may take dozen mininutes*******"
 
 if `c(version)'>=19{
-	netcdf_init, compiled
-	geotools_init, compiled
+	cap findfile NetCDFUtils-complete.jar
+	if _rc netcdf_init, compiled
+	cap findfile readraster-all-1.0.0-fat.jar
+	if _rc geotools_init, compiled
 }
 else{
 	cap findfile geotools_init.ado
