@@ -28,12 +28,16 @@ else {
     else {
         gettoken loci localversion : localversion, p(".")
         gettoken giti gitversion : gitversion, p(".")
+		while ("`loci'" !="" & "`giti'" !=""){
         if "`loci'" !="" & "`giti'" !="" {
             if "`loci'" < "`giti'" {
                 di "updating readraster...."
                 net install readraster, from(https://raw.github.com/kerrydu/readraster/develop) replace force
             }
         }
+        gettoken loci localversion : localversion, p(".")
+        gettoken giti gitversion : gitversion, p(".")		
+	  }
     }
 
 }
