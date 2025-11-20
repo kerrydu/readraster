@@ -15,7 +15,7 @@ geotools_init, compiled
 netcdf_init, compiled
 ```
 
-Note Stata 17 is bundled with JDK 11 so that users are required to manually install and configurate JDK 17. See the following instruction for the configuration of JDK 17 in Stata 17.
+Note Stata 17 is bundled with JDK 11 so that users are required to manually install and configurate JDK 17. See the following instruction for the configuration of JDK 17 in Stata 17. => [JDK 17 Configuration Instruction](#JDK17)
 
 **For Chinese users, the resource in Github.com might not be accessable directly within Stata. Thus, the method 2) is recommended.**
 
@@ -35,6 +35,7 @@ Note Stata 17 is bundled with JDK 11 so that users are required to manually inst
 
 ### For Stata 17 
 
+<span id="JDK17"></span>
 #### Step 1: Download and Install Java JDK 17 
 
 Download and install Java JDK 17 from one of the following sources:
