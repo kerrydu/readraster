@@ -13,11 +13,26 @@ net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/re
 
 ## Java Environment and Dependencies
 
+
+**After installing the package, the simple way to set up Java dependencies is downloading our precompiled jars via the following commands:**
+```
+netcdf_init, compiled
+geotools_init, compiled
+```
+
+---
+**For users who prefer to using the package via Jshell in Stata, the following settings are required.**
+
 All Java runtime and library setup steps are documented in [javaenvconfig.md](https://github.com/kerrydu/readraster/blob/develop/javaenvconfig.md). Review that guide for:
 
 - JDK requirements for Stata 17 versus Stata 18+
 - Initialisation of the GeoTools 34.0 and NetCDF-Java 5.9.1 libraries
 - Verification and troubleshooting tips after installation
+
+
+
+---
+
 
 ## Command Overview
 
