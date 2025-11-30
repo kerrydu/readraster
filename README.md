@@ -11,6 +11,13 @@ net install readraster, from(https://raw.githubusercontent.com/kerrydu/readraste
 net get readraster, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)
 ```
 
+## Update
+After the first installization， the package can be updated via:
+
+```
+readraster, update
+```
+
 ## Java Environment and Dependencies
 
 
@@ -50,12 +57,7 @@ The toolkit exposes seven commands that follow the workflow described in the man
   - `matchgeop` finds nearest neighbours between point datasets using great-circle distance (kilometres or miles)
 
 
-## Update
-After the first installization， the package can be updated via:
 
-```
-readraster, update
-```
 
 ## Workflow Snapshot
 
