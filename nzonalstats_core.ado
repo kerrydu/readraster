@@ -198,30 +198,27 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.eclipse.imagen.media.range.Range;
+import org.eclipse.imagen.media.stats.Statistics;
+import org.eclipse.imagen.media.stats.Statistics.StatsType;
+import org.eclipse.imagen.media.zonal.ZoneGeometry;
 
 // GeoTools API imports
-import org.geotools.api.parameter.GeneralParameterValue;
-import org.geotools.api.parameter.ParameterValue;
 import org.geotools.api.feature.simple.SimpleFeature;
+import org.geotools.api.feature.type.AttributeDescriptor;
+import org.geotools.api.feature.type.GeometryDescriptor;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
-import org.geotools.api.coverage.grid.GridEnvelope;
 
 // GeoTools implementation imports
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.GridGeometry2D;
-import org.geotools.coverage.grid.GridEnvelope2D;
-import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
-import org.geotools.coverage.grid.io.AbstractGridFormat;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.store.ReprojectingFeatureCollection;
-import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.process.raster.RasterZonalStatistics;
+import org.geotools.process.raster.RasterZonalStatistics2;
 import org.geotools.referencing.CRS;
 import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.api.coverage.SampleDimension;
@@ -238,7 +235,6 @@ import ucar.ma2.MAMath;
 
 // Stata SFI imports
 import com.stata.sfi.Data;
-import com.stata.sfi.SFIToolkit;
 
 public class nzonalstatics {
 
@@ -412,8 +408,14 @@ public class nzonalstatics {
 
             Attribute fillAttr = ncVar.findAttribute("_FillValue");
             if (fillAttr == null) fillAttr = ncVar.findAttribute("missing_value");
+            Double fillAttrNumeric = attributeToDouble(fillAttr);
             if (fillAttr != null) {
-                System.out.println("NetCDF variable '" + varName + "' missing value attribute: " + fillAttr.getNumericValue() + " (type: " + fillAttr.getDataType() + ")");
+                String attrType = fillAttr.getDataType().toString();
+                if (fillAttrNumeric != null) {
+                    System.out.println("NetCDF variable '" + varName + "' missing value attribute: " + fillAttrNumeric + " (type: " + attrType + ")");
+                } else {
+                    System.out.println("NetCDF variable '" + varName + "' missing value attribute present but not numeric (type: " + attrType + ")");
+                }
             } else {
                 System.out.println("NetCDF variable '" + varName + "' has no _FillValue or missing_value attribute.");
             }
@@ -547,13 +549,11 @@ public class nzonalstatics {
                 }
             }
 
-            /* Attribute fillAttr = ncVar.findAttribute("_FillValue"); */
-            if (fillAttr == null) fillAttr = ncVar.findAttribute("missing_value");
-            if (fillAttr != null) {
+            if (fillAttrNumeric != null) {
                 if (isDouble) {
-                    fillValueDouble = fillAttr.getNumericValue().doubleValue();
+                    fillValueDouble = fillAttrNumeric;
                 } else {
-                    fillValueFloat = fillAttr.getNumericValue().floatValue();
+                    fillValueFloat = fillAttrNumeric.floatValue();
                 }
             }
 
@@ -631,11 +631,11 @@ public class nzonalstatics {
 
             // Create GridCoverage2D
             GridCoverageFactory factory = new GridCoverageFactory();
-            GridSampleDimension[] bands = new GridSampleDimension[1];
-            bands[0] = new GridSampleDimension(varName);
+            GridSampleDimension[] sampleDims = new GridSampleDimension[1];
+            sampleDims[0] = new GridSampleDimension(varName);
 
             BufferedImage image = floatArrayToImage(gridData);
-            coverage = factory.create(varName, image, actualEnvelope, bands, null, null);
+            coverage = factory.create(varName, image, actualEnvelope, sampleDims, null, null);
 
             // Get coordinate systems for comparison
             CoordinateReferenceSystem rasterCRS = ncCRS;
@@ -658,228 +658,228 @@ public class nzonalstatics {
             }
 
 
-            RasterZonalStatistics process = new RasterZonalStatistics();
-            SimpleFeatureCollection resultFeatures = process.execute(
-                    coverage,      // raster data
-                    0,             // use first (only) band
-                    featureCollection,  // vector regions
-                    null           // classification image (optional, not needed here)
-            );
-
-            // Process results - safely with proper resource cleanup and store in a list
-            List<SimpleFeature> allFeatures = new ArrayList<>();
-            featureIterator = resultFeatures.features();
+            // Materialize shapefile features for repeated use
+            List<SimpleFeature> zoneFeatures = new ArrayList<>();
             try {
+                featureIterator = featureCollection.features();
                 while (featureIterator.hasNext()) {
-                    SimpleFeature feature = featureIterator.next();
-                    allFeatures.add(feature);
+                    zoneFeatures.add(featureIterator.next());
                 }
             } finally {
                 if (featureIterator != null) {
                     featureIterator.close();
+                    featureIterator = null;
                 }
             }
 
-            // Get total number of features
-            int totalFeatures = allFeatures.size();
+            if (zoneFeatures.isEmpty()) {
+                System.out.println("No features found in the shapefile.");
+                return;
+            }
 
-            if (totalFeatures > 0) {
-                // First, examine attributes to understand the data structure
-                Map<String, Integer> attributeNameMap = new HashMap<>();
-                List<String> idAttrNames = new ArrayList<>();
-                String countAttrName = null;
-                String avgAttrName = null;
-                String minAttrName = null;
-                String maxAttrName = null;
-                String stddevAttrName = null;
-                String sumAttrName = null;
+            // Build list of statistics required by the user
+            List<StatsType> statsToRequest = new ArrayList<>();
+            if (showMin) {
+                statsToRequest.add(StatsType.MIN);
+            }
+            if (showMax) {
+                statsToRequest.add(StatsType.MAX);
+            }
+            if (showSum) {
+                statsToRequest.add(StatsType.SUM);
+            }
+            if (showAvg) {
+                statsToRequest.add(StatsType.MEAN);
+            }
+            if (showStd) {
+                statsToRequest.add(StatsType.DEV_STD);
+            }
+            if (statsToRequest.isEmpty()) {
+                statsToRequest.add(StatsType.MEAN);
+            }
 
-                // Find attribute names and check which ones are available
-                SimpleFeature firstFeature = allFeatures.get(0);
-                for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
-                    String attributeName = firstFeature.getType().getDescriptor(i).getLocalName();
+            StatsType[] statsArray = statsToRequest.toArray(new StatsType[0]);
+            int[] bands = new int[] {0};
 
-                    Object value = firstFeature.getAttribute(attributeName);
+            RasterZonalStatistics2 process = new RasterZonalStatistics2();
+            List<ZoneGeometry> zoneGeometries = process.execute(
+                    coverage,
+                    bands,
+                    zoneFeatures,
+                    null,
+                    null,
+                    null,
+                    false,
+                    null,
+                    statsArray,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false);
 
-                    if (attributeName.equals("count")) {
-                        if (showCount) {
-                            countAttrName = attributeName;
-                        }
-                    } else if (attributeName.equals("avg")) {
-                        if (showAvg) {
-                            avgAttrName = attributeName;
-                        }
-                    } else if (attributeName.equals("min")) {
-                        if (showMin) {
-                            minAttrName = attributeName;
-                        }
-                    } else if (attributeName.equals("max")) {
-                        if (showMax) {
-                            maxAttrName = attributeName;
-                        }
-                    } else if (attributeName.equals("stddev")) {
-                        if (showStd) {
-                            stddevAttrName = attributeName;
-                        }
-                    } else if (attributeName.equals("sum")) {
-                        if (showSum) {
-                            sumAttrName = attributeName;
-                        }
-                    } else if (!attributeName.equals("the_geom") && !attributeName.equals("z_the_geom") &&
-                              !attributeName.equals("sum_2")) {
-                        // Exclude geometry attributes but keep all other attributes as ID
-                        idAttrNames.add(attributeName);
-                    }
+            if (zoneGeometries == null) {
+                zoneGeometries = new ArrayList<>();
+            }
+
+            int totalFeatures = zoneFeatures.size();
+            Data.setObsTotal(totalFeatures);
+
+            Map<String, Integer> attributeNameMap = new HashMap<>();
+            List<String> idAttrNames = new ArrayList<>();
+            Map<String, String> outputToSourceAttr = new HashMap<>();
+            Map<String, Boolean> idAttrNumeric = new HashMap<>();
+            Map<StatsType, Integer> statsIndexMap = new HashMap<>();
+            for (int i = 0; i < statsToRequest.size(); i++) {
+                statsIndexMap.put(statsToRequest.get(i), i);
+            }
+
+            SimpleFeature firstFeature = zoneFeatures.get(0);
+            int varIndex = 1;
+            for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
+                AttributeDescriptor descriptor = firstFeature.getType().getDescriptor(i);
+                if (descriptor instanceof GeometryDescriptor) {
+                    continue;
                 }
 
+                String sourceAttrName = descriptor.getLocalName();
+                String outputAttrName = "z_" + sourceAttrName;
+                idAttrNames.add(outputAttrName);
+                outputToSourceAttr.put(outputAttrName, sourceAttrName);
 
-                // Set Stata dataset size
-                Data.setObsTotal(totalFeatures);
+                Object sampleValue = firstFeature.getAttribute(sourceAttrName);
+                if (sampleValue instanceof Number) {
+                    Data.addVarDouble(outputAttrName);
+                    idAttrNumeric.put(outputAttrName, true);
+                } else {
+                    int strLength = determineStringLength(sampleValue);
+                    Data.addVarStr(outputAttrName, strLength);
+                    idAttrNumeric.put(outputAttrName, false);
+                }
 
-                // Create variables in Stata - first the ID attributes, then the stats
-                int varIndex = 1;
+                attributeNameMap.put(outputAttrName, varIndex++);
+            }
 
-                // Create ID attribute variables first
-                for (String idAttr : idAttrNames) {
-                    Object value = firstFeature.getAttribute(idAttr);
+            String countAttrName = null;
+            String avgAttrName = null;
+            String minAttrName = null;
+            String maxAttrName = null;
+            String stddevAttrName = null;
+            String sumAttrName = null;
 
-                    if (value instanceof Number) {
-                        Data.addVarDouble(idAttr);
-                        /* System.out.println("Created numeric variable: " + idAttr); */
+            if (showCount) {
+                countAttrName = "count";
+                Data.addVarDouble(countAttrName);
+                attributeNameMap.put(countAttrName, varIndex++);
+                System.out.println("Created numeric variable: count");
+            }
+
+            if (showAvg && statsIndexMap.containsKey(StatsType.MEAN)) {
+                avgAttrName = "avg";
+                Data.addVarDouble(avgAttrName);
+                attributeNameMap.put(avgAttrName, varIndex++);
+                System.out.println("Created numeric variable: avg");
+            }
+
+            if (showMin && statsIndexMap.containsKey(StatsType.MIN)) {
+                minAttrName = "min";
+                Data.addVarDouble(minAttrName);
+                attributeNameMap.put(minAttrName, varIndex++);
+                System.out.println("Created numeric variable: min");
+            }
+
+            if (showMax && statsIndexMap.containsKey(StatsType.MAX)) {
+                maxAttrName = "max";
+                Data.addVarDouble(maxAttrName);
+                attributeNameMap.put(maxAttrName, varIndex++);
+                System.out.println("Created numeric variable: max");
+            }
+
+            if (showStd && statsIndexMap.containsKey(StatsType.DEV_STD)) {
+                stddevAttrName = "std";
+                Data.addVarDouble(stddevAttrName);
+                attributeNameMap.put(stddevAttrName, varIndex++);
+                System.out.println("Created numeric variable: std");
+            }
+
+            if (showSum && statsIndexMap.containsKey(StatsType.SUM)) {
+                sumAttrName = "sum";
+                Data.addVarDouble(sumAttrName);
+                attributeNameMap.put(sumAttrName, varIndex++);
+                System.out.println("Created numeric variable: sum");
+            }
+
+            for (int i = 0; i < totalFeatures; i++) {
+                SimpleFeature feature = zoneFeatures.get(i);
+                int stataObs = i + 1;
+
+                for (String outputAttrName : idAttrNames) {
+                    String sourceAttrName = outputToSourceAttr.get(outputAttrName);
+                    Object value = feature.getAttribute(sourceAttrName);
+                    int stataVar = attributeNameMap.get(outputAttrName);
+
+                    if (value == null) {
+                        continue;
+                    }
+
+                    if (Boolean.TRUE.equals(idAttrNumeric.get(outputAttrName))) {
+                        Data.storeNumFast(stataVar, stataObs, ((Number) value).doubleValue());
                     } else {
-                        // Optimize string length based on content
-                        int strLength = 32; // Default smaller length
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() <= 16) {
-                                strLength = 16;
-                            } else if (strValue.length() <= 32) {
-                                strLength = 32;
-                            } else if (strValue.length() <= 48) {
-                                strLength = 48;
-                            }
-                        }
-
-                        Data.addVarStr(idAttr, strLength);
-                        /* System.out.println("Created string variable: " + idAttr + " (length " + strLength + ")"); */
-                    }
-
-                    attributeNameMap.put(idAttr, varIndex++);
-                }
-
-                // Create statistics variables based on user request
-                if (showCount && countAttrName != null) {
-                    Data.addVarDouble("count");
-                    attributeNameMap.put(countAttrName, varIndex++);
-                    System.out.println("Created numeric variable: count");
-                }
-
-                if (showAvg && avgAttrName != null) {
-                    Data.addVarDouble("avg");
-                    attributeNameMap.put(avgAttrName, varIndex++);
-                    System.out.println("Created numeric variable: avg");
-                }
-
-                if (showMin && minAttrName != null) {
-                    Data.addVarDouble("min");
-                    attributeNameMap.put(minAttrName, varIndex++);
-                    System.out.println("Created numeric variable: min");
-                }
-
-                if (showMax && maxAttrName != null) {
-                    Data.addVarDouble("max");
-                    attributeNameMap.put(maxAttrName, varIndex++);
-                    System.out.println("Created numeric variable: max");
-                }
-
-                if (showStd && stddevAttrName != null) {
-                    Data.addVarDouble("std");
-                    attributeNameMap.put(stddevAttrName, varIndex++);
-                    System.out.println("Created numeric variable: std");
-                }
-
-                if (showSum && sumAttrName != null) {
-                    Data.addVarDouble("sum");
-                    attributeNameMap.put(sumAttrName, varIndex++);
-                    System.out.println("Created numeric variable: sum");
-                }
-
-                // Fill Stata dataset with data - more efficiently by processing one observation at a time
-                for (int i = 0; i < totalFeatures; i++) {
-                    SimpleFeature feature = allFeatures.get(i);
-                    int stataObs = i + 1; // Stata is 1-indexed
-
-                    // First process ID attributes
-                    for (String idAttr : idAttrNames) {
-                        Object value = feature.getAttribute(idAttr);
-                        int stataVar = attributeNameMap.get(idAttr);
-
-                        if (value != null) {
-                            if (value instanceof Number) {
-                                Data.storeNumFast(stataVar, stataObs, ((Number) value).doubleValue());
-                            } else {
-                                Data.storeStr(stataVar, stataObs, value.toString());
-                            }
-                        }
-                    }
-
-                    // Then process all statistics for this feature at once
-                    if (showCount && countAttrName != null) {
-                        Object value = feature.getAttribute(countAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
-                    }
-
-                    if (showAvg && avgAttrName != null) {
-                        Object value = feature.getAttribute(avgAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
-                    }
-
-                    if (showMin && minAttrName != null) {
-                        Object value = feature.getAttribute(minAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
-                    }
-
-                    if (showMax && maxAttrName != null) {
-                        Object value = feature.getAttribute(maxAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
-                    }
-
-                    if (showStd && stddevAttrName != null) {
-                        Object value = feature.getAttribute(stddevAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
-                    }
-
-                    if (showSum && sumAttrName != null) {
-                        Object value = feature.getAttribute(sumAttrName);
-                        if (value != null) {
-                            Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs,
-                                            ((Number) value).doubleValue());
-                        }
+                        Data.storeStr(stataVar, stataObs, value.toString());
                     }
                 }
 
-                // Force update of the Stata dataset
-                Data.updateModified();
+                ZoneGeometry zoneGeometry = i < zoneGeometries.size() ? zoneGeometries.get(i) : null;
+                Statistics[] stats = extractStatisticsForZone(zoneGeometry, 0);
+                if (stats == null || stats.length == 0) {
+                    continue;
+                }
 
-                System.out.println("Data successfully exported to Stata dataset.");
-            } else {
-                System.out.println("No features found in the result set.");
+                if (countAttrName != null) {
+                    Number sampleCount = stats[0].getNumSamples();
+                    if (sampleCount != null) {
+                        Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, sampleCount.doubleValue());
+                    }
+                }
+
+                if (avgAttrName != null) {
+                    Double avgValue = getStatValue(stats, statsIndexMap, StatsType.MEAN);
+                    if (avgValue != null) {
+                        Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, avgValue);
+                    }
+                }
+
+                if (minAttrName != null) {
+                    Double minValue = getStatValue(stats, statsIndexMap, StatsType.MIN);
+                    if (minValue != null) {
+                        Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, minValue);
+                    }
+                }
+
+                if (maxAttrName != null) {
+                    Double maxValue = getStatValue(stats, statsIndexMap, StatsType.MAX);
+                    if (maxValue != null) {
+                        Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, maxValue);
+                    }
+                }
+
+                if (stddevAttrName != null) {
+                    Double stdValue = getStatValue(stats, statsIndexMap, StatsType.DEV_STD);
+                    if (stdValue != null) {
+                        Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, stdValue);
+                    }
+                }
+
+                if (sumAttrName != null) {
+                    Double sumValue = getStatValue(stats, statsIndexMap, StatsType.SUM);
+                    if (sumValue != null) {
+                        Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, sumValue);
+                    }
+                }
             }
+
+            Data.updateModified();
+            System.out.println("Data successfully exported to Stata dataset.");
 
         } catch (Exception e) {
             System.out.println("Error in nzonalstatics: " + e.getMessage());
@@ -985,6 +985,98 @@ public class nzonalstatics {
         }
 
         return new double[]{minLon, minLat, maxLon, maxLat};
+    }
+
+    private static Double attributeToDouble(Attribute attr) {
+        if (attr == null) {
+            return null;
+        }
+
+        Number numericValue = attr.getNumericValue();
+        if (numericValue != null) {
+            return numericValue.doubleValue();
+        }
+
+        String stringValue = attr.getStringValue();
+        if (stringValue == null) {
+            return null;
+        }
+
+        String trimmed = stringValue.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("null")) {
+            return null;
+        }
+
+        if (trimmed.equalsIgnoreCase("nan")) {
+            return Double.NaN;
+        }
+
+        try {
+            return Double.parseDouble(trimmed);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static int determineStringLength(Object value) {
+        if (value == null) {
+            return 32;
+        }
+
+        int length = value.toString().length();
+        if (length <= 16) {
+            return 16;
+        } else if (length <= 32) {
+            return 32;
+        } else if (length <= 48) {
+            return 48;
+        }
+        return 80;
+    }
+
+    private static Statistics[] extractStatisticsForZone(ZoneGeometry zoneGeometry, int bandIndex) {
+        if (zoneGeometry == null) {
+            return null;
+        }
+
+        Map<Integer, Map<Range, Statistics[]>> statsPerBand = zoneGeometry.getStatsPerBand(bandIndex);
+        if (statsPerBand == null || statsPerBand.isEmpty()) {
+            return null;
+        }
+
+        for (Map<Range, Statistics[]> rangeMap : statsPerBand.values()) {
+            if (rangeMap == null || rangeMap.isEmpty()) {
+                continue;
+            }
+            for (Statistics[] statsArray : rangeMap.values()) {
+                if (statsArray != null && statsArray.length > 0) {
+                    return statsArray;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Double getStatValue(Statistics[] stats, Map<StatsType, Integer> indexMap, StatsType statType) {
+        if (stats == null || indexMap == null || statType == null) {
+            return null;
+        }
+
+        Integer idx = indexMap.get(statType);
+        if (idx == null || idx < 0 || idx >= stats.length) {
+            return null;
+        }
+
+        Statistics statistic = stats[idx];
+        if (statistic == null) {
+            return null;
+        }
+
+        Object result = statistic.getResult();
+        if (result instanceof Number) {
+            return ((Number) result).doubleValue();
+        }
+        return null;
     }
 }
 
