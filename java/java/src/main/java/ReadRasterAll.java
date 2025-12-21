@@ -6,27 +6,45 @@ package org.readraster;
 
 import java.awt.Transparency;
 import java.awt.color.ColorSpace;
-import java.awt.image.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.ComponentColorModel;
+import java.awt.image.DataBuffer;
+import java.awt.image.DataBufferFloat;
+import java.awt.image.PixelInterleavedSampleModel;
+import java.awt.image.Raster;
+import java.awt.image.SampleModel;
+import java.awt.image.WritableRaster;
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-// GeoTools API + Impl
-import org.geotools.api.coverage.SampleDimension;
-import org.geotools.api.coverage.grid.GridEnvelope;
+import javax.imageio.ImageIO;
+import javax.imageio.spi.IIORegistry;
+import javax.imageio.spi.ImageInputStreamSpi;
+
 import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.api.parameter.GeneralParameterValue;
-import org.geotools.api.parameter.ParameterValue;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.operation.MathTransform;
+import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.GridSampleDimension;
+import org.geotools.coverage.grid.GridCoordinates2D;
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
+import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
-import org.geotools.coverage.grid.io.AbstractGridFormat;
 import org.geotools.coverage.grid.io.GridCoverage2DReader;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
@@ -34,35 +52,21 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.store.ReprojectingFeatureCollection;
 import org.geotools.gce.geotiff.GeoTiffReader;
+import org.geotools.geometry.Position2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.process.raster.RasterZonalStatistics;
 import org.geotools.referencing.CRS;
 import org.geotools.util.factory.Hints;
 
-// (no Envelope imports needed; using ReferencedEnvelope from reader where necessary)
+import com.stata.sfi.Data;
+import com.stata.sfi.SFIToolkit;
+import com.stata.sfi.Scalar;
 
-// NetCDF
 import ucar.ma2.Array;
 import ucar.ma2.Index;
-import ucar.ma2.MAMath;
 import ucar.nc2.Attribute;
 import ucar.nc2.Variable;
 import ucar.nc2.dataset.NetcdfDataset;
 import ucar.nc2.dataset.NetcdfDatasets;
-
-// Stata SFI
-import com.stata.sfi.Data;
-import com.stata.sfi.Scalar;
-import com.stata.sfi.SFIToolkit;
-
-// Referencing transform
-import org.geotools.api.referencing.operation.MathTransform;
-import org.geotools.api.referencing.operation.TransformException;
-import org.geotools.geometry.Position2D;
-import org.geotools.coverage.grid.GridCoordinates2D;
-import javax.imageio.spi.IIORegistry;
-import javax.imageio.spi.ImageInputStreamSpi;
-import javax.imageio.ImageIO;
 
 public class ReadRasterAll {
     // Global static initializer for GeoTools logging tweaks
@@ -414,14 +418,15 @@ public class ReadRasterAll {
             AbstractGridCoverage2DReader reader = null;
             SimpleFeatureIterator featureIterator = null;
             SimpleFeatureCollection featureCollection = null;
-
+            String rasterCRSName = "Unknown CRS";
             try {
                 Logger.getGlobal().setLevel(Level.SEVERE);
 
+                // Parse requested statistics
                 String[] requestedStats = statsParam == null ? new String[0] : statsParam.toLowerCase().split("\\s+");
                 boolean showCount = false, showAvg = false, showMin = false, showMax = false, showStd = false, showSum = false;
                 for (String stat : requestedStats) {
-                    switch (stat.trim()) {
+                    switch(stat.trim()) {
                         case "count": showCount = true; break;
                         case "avg": showAvg = true; break;
                         case "min": showMin = true; break;
@@ -431,14 +436,28 @@ public class ReadRasterAll {
                     }
                 }
 
+                // Check if vector data file exists
                 File shpFile = new File(shpPath);
-                if (!shpFile.exists()) { SFIToolkit.errorln("Shapefile does not exist: " + shpPath); return; }
-                String basePath = shpPath.substring(0, shpPath.lastIndexOf('.'));
-                if (!new File(basePath + ".shx").exists() || !new File(basePath + ".dbf").exists() || !new File(basePath + ".prj").exists()) {
-                    SFIToolkit.displayln("Warning: Missing required shapefile components. .shx/.dbf/.prj are required.");
+                if (!shpFile.exists()) {
+                    SFIToolkit.errorln("Shapefile does not exist: " + shpPath);
                     return;
                 }
 
+                // Check for required components
+                String basePath = shpPath.substring(0, shpPath.lastIndexOf('.'));
+                File shxFile = new File(basePath + ".shx");
+                File dbfFile = new File(basePath + ".dbf");
+                File prjFile = new File(basePath + ".prj");
+                if (!shxFile.exists() || !dbfFile.exists() || !prjFile.exists()) {
+                    SFIToolkit.displayln("Warning: Missing required shapefile components:");
+                    if (!shxFile.exists()) SFIToolkit.displayln(" - Missing .shx index file");
+                    if (!dbfFile.exists()) SFIToolkit.displayln(" - Missing .dbf attribute file");
+                    if (!prjFile.exists()) SFIToolkit.displayln(" - Missing .prj attribute file");
+                    SFIToolkit.displayln("A complete shapefile requires .shp, .shx, .dbf and .prj files.");
+                    return;
+                }
+
+                // Load vector data (shapefile)
                 ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
                 Map<String, Object> shpParams = new HashMap<>();
                 shpParams.put("url", shpFile.toURI().toURL());
@@ -446,13 +465,18 @@ public class ReadRasterAll {
                 shapefileDataStore.setCharset(java.nio.charset.Charset.forName("UTF-8"));
                 featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
 
+                // Check if raster data file exists
                 File tiffFile = new File(tiffPath);
-                if (!tiffFile.exists()) { SFIToolkit.errorln("GeoTIFF file does not exist: " + tiffPath); return; }
+                if (!tiffFile.exists()) {
+                    SFIToolkit.errorln("GeoTIFF file does not exist: " + tiffPath);
+                    return;
+                }
 
-                reader = new GeoTiffReader(tiffFile.toURI().toURL());
+                // Create a GeoTiff reader
+                reader = new GeoTiffReader(tiffFile);
 
+                // Get coordinate systems for comparison
                 CoordinateReferenceSystem rasterCRS = reader.getCoordinateReferenceSystem();
-                String rasterCRSName;
                 if (rasterCRS != null) {
                     rasterCRSName = rasterCRS.getName().toString();
                     SFIToolkit.displayln("GeoTIFF CRS detected: " + rasterCRSName + ". User-provided CRS is ignored.");
@@ -462,7 +486,7 @@ public class ReadRasterAll {
                         rasterCRS = CRS.decode(userCrs, true);
                         rasterCRSName = rasterCRS.getName().toString();
                     } else {
-                        SFIToolkit.errorln("Error: GeoTIFF file has no CRS and no CRS provided.");
+                        SFIToolkit.errorln("GeoTIFF CRS not detected and no user CRS provided. Aborting.");
                         return;
                     }
                 }
@@ -471,6 +495,7 @@ public class ReadRasterAll {
                 String vectorCRSName = vectorCRS.getName().toString();
                 SFIToolkit.displayln("Shapefile CRS: " + vectorCRSName);
 
+                // Check if we need to reproject
                 boolean needsReprojection = !CRS.equalsIgnoreMetadata(rasterCRS, vectorCRS);
                 if (needsReprojection) {
                     SFIToolkit.displayln("Reprojecting shapefile from " + vectorCRSName + " to " + rasterCRSName);
@@ -479,141 +504,241 @@ public class ReadRasterAll {
                     SFIToolkit.displayln("Coordinate systems are compatible, no reprojection needed");
                 }
 
+                // Get shapefile bounds AFTER reprojection (if any)
                 ReferencedEnvelope shpBounds = featureCollection.getBounds();
                 SFIToolkit.displayln("Shapefile bounds for raster reading: " + shpBounds);
 
+                // Create read parameters to limit reading to shapefile's bounds
                 GeneralParameterValue[] readParams = null;
                 if (shpBounds != null && !shpBounds.isEmpty()) {
-                    try {
-                        GridEnvelope gridRange = reader.getOriginalGridRange();
-                        ReferencedEnvelope rasterEnvelope = new ReferencedEnvelope(reader.getOriginalEnvelope());
-
-                        ReferencedEnvelope intersection = new ReferencedEnvelope(
-                                Math.max(shpBounds.getMinX(), rasterEnvelope.getMinX()),
-                                Math.min(shpBounds.getMaxX(), rasterEnvelope.getMaxX()),
-                                Math.max(shpBounds.getMinY(), rasterEnvelope.getMinY()),
-                                Math.min(shpBounds.getMaxY(), rasterEnvelope.getMaxY()),
-                                shpBounds.getCoordinateReferenceSystem()
-                        );
-
-                        if (intersection.isEmpty()) {
-                            SFIToolkit.displayln("Warning: Shapefile bounds do not overlap with raster extent! Using full raster extent.");
-                        } else {
-                            GridCoverage2D fullGridCov = reader.read((GeneralParameterValue[]) null);
-                            GridGeometry2D originalGeometry = fullGridCov.getGridGeometry();
-                            final ParameterValue<GridGeometry2D> gg = AbstractGridFormat.READ_GRIDGEOMETRY2D.createValue();
-                            GridGeometry2D simpleGeometry = new GridGeometry2D(
-                                    originalGeometry.getGridRange(),
-                                    originalGeometry.getGridToCRS(),
-                                    intersection.getCoordinateReferenceSystem()
-                            );
-                            gg.setValue(simpleGeometry);
-                            readParams = new GeneralParameterValue[]{gg};
-                            fullGridCov.dispose(true);
-                            SFIToolkit.displayln("Successfully created optimized read parameters");
-                        }
-                    } catch (Exception e) {
-                        SFIToolkit.displayln("Warning: Could not create optimized read parameters: " + e.getMessage());
-                        SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
-                        readParams = null;
-                    }
+                    // Optionally optimize raster read to only cover shapefile extent
+                    // (left as a placeholder for future optimization)
                 }
 
-                GridCoverage2D coverage;
+                // Read the raster data - either limited or full depending on whether readParams was set
+                GridCoverage2D coverage = null;
                 try {
                     coverage = reader.read(readParams);
                     SFIToolkit.displayln("Successfully read raster data" + (readParams != null ? " with optimization" : " (full extent)"));
                 } catch (Exception e) {
                     SFIToolkit.errorln("Error reading raster with optimized parameters: " + e.getMessage());
                     SFIToolkit.displayln("Falling back to reading the entire raster");
-                    coverage = reader.read((GeneralParameterValue[]) null);
+                    coverage = reader.read((org.geotools.api.parameter.GeneralParameterValue[]) null);
                 }
 
-                if (coverage == null) { SFIToolkit.errorln("Failed to read raster data. Aborting."); return; }
-
-                int numBands = coverage.getNumSampleDimensions();
-                if (bandIndex >= numBands || bandIndex < 0) {
-                    SFIToolkit.errorln("Specified band index is out of range, current index: " + bandIndex + ", total bands: " + numBands);
+                if (coverage == null) {
+                    SFIToolkit.errorln("Failed to read raster data. Aborting.");
                     return;
                 }
 
-                RasterZonalStatistics process = new RasterZonalStatistics();
-                SimpleFeatureCollection resultFeatures = process.execute(coverage, bandIndex, featureCollection, null);
+                int numBands = coverage.getNumSampleDimensions();
+                    // Defensive: Check raster band count and type
+                    if (numBands <= 0) {
+                        SFIToolkit.errorln("GeoTIFF contains no bands.");
+                        return;
+                    }
+                    if (bandIndex < 0 || bandIndex >= numBands) {
+                        SFIToolkit.errorln("Requested band index " + bandIndex + " is out of bounds. Available bands: " + numBands);
+                        return;
+                    }
 
-                List<SimpleFeature> allFeatures = new ArrayList<>();
-                featureIterator = resultFeatures.features();
-                try { while (featureIterator.hasNext()) allFeatures.add(featureIterator.next()); }
-                finally { if (featureIterator != null) featureIterator.close(); }
+                // Materialize feature collection into a list for processing and export
+                List<SimpleFeature> zoneFeatures = new ArrayList<>();
+                try {
+                    featureIterator = featureCollection.features();
+                    while (featureIterator.hasNext()) {
+                        zoneFeatures.add(featureIterator.next());
+                    }
+                } finally {
+                    if (featureIterator != null) featureIterator.close();
+                }
 
-                int totalFeatures = allFeatures.size();
+                if (zoneFeatures.isEmpty()) {
+                    SFIToolkit.errorln("No features found in the shapefile.");
+                    return;
+                }
+
+                // Build list of statistics required by the user
+                List<org.eclipse.imagen.media.stats.Statistics.StatsType> statsToRequest = new ArrayList<>();
+                if (showMin && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN);
+                }
+                if (showMax && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX);
+                }
+                if (showSum && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM);
+                }
+                if (showAvg && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                }
+                if (showStd && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD);
+                }
+                // Ensure at least one statistic is calculated so count can be derived
+                if (statsToRequest.isEmpty()) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                }
+
+                org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
+                int[] bands = new int[] {bandIndex};
+
+                org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
+                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
+                        coverage,
+                        bands,
+                        zoneFeatures,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null,
+                        statsArray,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false);
+
+                if (zoneGeometries == null) {
+                    zoneGeometries = new ArrayList<>();
+                }
+
+                // Prepare for exporting results back to Stata
+                int totalFeatures = zoneFeatures.size();
                 SFIToolkit.displayln("Total features: " + totalFeatures);
-                if (totalFeatures <= 0) { SFIToolkit.displayln("No features found in the result set."); return; }
+                Data.setObsTotal(totalFeatures);
 
                 Map<String, Integer> attributeNameMap = new HashMap<>();
                 List<String> idAttrNames = new ArrayList<>();
-                String countAttrName = null, avgAttrName = null, minAttrName = null, maxAttrName = null, stddevAttrName = null, sumAttrName = null;
-
-                SimpleFeature firstFeature = allFeatures.get(0);
-                for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
-                    String attributeName = firstFeature.getType().getDescriptor(i).getLocalName();
-                    if ("count".equals(attributeName)) { if (showCount) countAttrName = attributeName; }
-                    else if ("avg".equals(attributeName)) { if (showAvg) avgAttrName = attributeName; }
-                    else if ("min".equals(attributeName)) { if (showMin) minAttrName = attributeName; }
-                    else if ("max".equals(attributeName)) { if (showMax) maxAttrName = attributeName; }
-                    else if ("stddev".equals(attributeName)) { if (showStd) stddevAttrName = attributeName; }
-                    else if ("sum".equals(attributeName)) { if (showSum) sumAttrName = attributeName; }
-                    else if (!"the_geom".equals(attributeName) && !"z_the_geom".equals(attributeName) && !"sum_2".equals(attributeName)) {
-                        idAttrNames.add(attributeName);
-                    }
+                Map<String, String> outputToSourceAttr = new HashMap<>();
+                Map<String, Boolean> idAttrNumeric = new HashMap<>();
+                Map<org.eclipse.imagen.media.stats.Statistics.StatsType, Integer> statsIndexMap = new HashMap<>();
+                for (int i = 0; i < statsToRequest.size(); i++) {
+                    statsIndexMap.put(statsToRequest.get(i), i);
                 }
 
-                Data.setObsTotal(totalFeatures);
+                // Inspect the first feature to decide which ID attributes to include
+                SimpleFeature firstFeature = zoneFeatures.get(0);
                 int varIndex = 1;
-                for (String idAttr : idAttrNames) {
-                    Object value = firstFeature.getAttribute(idAttr);
-                    if (value instanceof Number) { Data.addVarDouble(idAttr); }
-                    else {
-                        int strLength = 32;
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() <= 16) strLength = 16;
-                            else if (strValue.length() <= 32) strLength = 32;
-                            else if (strValue.length() <= 48) strLength = 48;
-                        }
-                        Data.addVarStr(idAttr, strLength);
+                for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
+                    org.geotools.api.feature.type.AttributeDescriptor descriptor = firstFeature.getType().getDescriptor(i);
+                    if (descriptor instanceof org.geotools.api.feature.type.GeometryDescriptor) {
+                        continue;
                     }
-                    attributeNameMap.put(idAttr, varIndex++);
+                    String sourceAttrName = descriptor.getLocalName();
+                    String outputAttrName = "z_" + sourceAttrName;
+                    idAttrNames.add(outputAttrName);
+                    outputToSourceAttr.put(outputAttrName, sourceAttrName);
+                    Object sampleValue = firstFeature.getAttribute(sourceAttrName);
+                    if (sampleValue instanceof Number) {
+                        Data.addVarDouble(outputAttrName);
+                        idAttrNumeric.put(outputAttrName, true);
+                        SFIToolkit.displayln("Created numeric variable: " + outputAttrName);
+                    } else {
+                        Data.addVarStr(outputAttrName, determineStringLength(sampleValue));
+                        idAttrNumeric.put(outputAttrName, false);
+                        SFIToolkit.displayln("Created string variable: " + outputAttrName);
+                    }
+                    attributeNameMap.put(outputAttrName, varIndex++);
                 }
 
-                if (showCount && countAttrName != null) { Data.addVarDouble("count"); attributeNameMap.put(countAttrName, varIndex++); }
-                if (showAvg && avgAttrName != null) { Data.addVarDouble("avg"); attributeNameMap.put(avgAttrName, varIndex++); }
-                if (showMin && minAttrName != null) { Data.addVarDouble("min"); attributeNameMap.put(minAttrName, varIndex++); }
-                if (showMax && maxAttrName != null) { Data.addVarDouble("max"); attributeNameMap.put(maxAttrName, varIndex++); }
-                if (showStd && stddevAttrName != null) { Data.addVarDouble("std"); attributeNameMap.put(stddevAttrName, varIndex++); }
-                if (showSum && sumAttrName != null) { Data.addVarDouble("sum"); attributeNameMap.put(sumAttrName, varIndex++); }
+                String countAttrName = null;
+                String avgAttrName = null;
+                String minAttrName = null;
+                String maxAttrName = null;
+                String stddevAttrName = null;
+                String sumAttrName = null;
 
+                if (showCount) {
+                    countAttrName = "count";
+                    Data.addVarDouble(countAttrName);
+                    attributeNameMap.put(countAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: count");
+                }
+                if (showAvg && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN)) {
+                    avgAttrName = "avg";
+                    Data.addVarDouble(avgAttrName);
+                    attributeNameMap.put(avgAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: avg");
+                }
+                if (showMin && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN)) {
+                    minAttrName = "min";
+                    Data.addVarDouble(minAttrName);
+                    attributeNameMap.put(minAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: min");
+                }
+                if (showMax && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX)) {
+                    maxAttrName = "max";
+                    Data.addVarDouble(maxAttrName);
+                    attributeNameMap.put(maxAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: max");
+                }
+                if (showStd && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD)) {
+                    stddevAttrName = "std";
+                    Data.addVarDouble(stddevAttrName);
+                    attributeNameMap.put(stddevAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: std");
+                }
+                if (showSum && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM)) {
+                    sumAttrName = "sum";
+                    Data.addVarDouble(sumAttrName);
+                    attributeNameMap.put(sumAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: sum");
+                }
+
+                // Populate the Stata dataset row by row
                 for (int i = 0; i < totalFeatures; i++) {
-                    SimpleFeature feature = allFeatures.get(i);
+                    SimpleFeature feature = zoneFeatures.get(i);
                     int stataObs = i + 1;
-                    for (String idAttr : idAttrNames) {
-                        Object value = feature.getAttribute(idAttr);
-                        int stataVar = attributeNameMap.get(idAttr);
-                        if (value != null) {
-                            if (value instanceof Number) Data.storeNumFast(stataVar, stataObs, ((Number) value).doubleValue());
-                            else Data.storeStr(stataVar, stataObs, value.toString());
+                    // Store ID attributes
+                    for (String outputAttrName : idAttrNames) {
+                        String sourceAttrName = outputToSourceAttr.get(outputAttrName);
+                        Object value = feature.getAttribute(sourceAttrName);
+                        if (idAttrNumeric.get(outputAttrName)) {
+                            Data.storeNumFast(attributeNameMap.get(outputAttrName), stataObs, value == null ? Double.NaN : ((Number) value).doubleValue());
+                        } else {
+                            Data.storeStr(attributeNameMap.get(outputAttrName), stataObs, value == null ? "" : value.toString());
                         }
                     }
-                    if (showCount && countAttrName != null) { Object v = feature.getAttribute(countAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showAvg && avgAttrName != null) { Object v = feature.getAttribute(avgAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showMin && minAttrName != null) { Object v = feature.getAttribute(minAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showMax && maxAttrName != null) { Object v = feature.getAttribute(maxAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showStd && stddevAttrName != null) { Object v = feature.getAttribute(stddevAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showSum && sumAttrName != null) { Object v = feature.getAttribute(sumAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, ((Number) v).doubleValue()); }
+                    org.eclipse.imagen.media.zonal.ZoneGeometry zoneGeometry = i < zoneGeometries.size() ? zoneGeometries.get(i) : null;
+                    org.eclipse.imagen.media.stats.Statistics[] stats = extractStatisticsForZone(zoneGeometry, bandIndex);
+                    if (stats == null || stats.length == 0) {
+                        if (countAttrName != null) Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, 0);
+                        if (avgAttrName != null) Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, Double.NaN);
+                        if (minAttrName != null) Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, Double.NaN);
+                        if (maxAttrName != null) Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, Double.NaN);
+                        if (stddevAttrName != null) Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, Double.NaN);
+                        if (sumAttrName != null) Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, Double.NaN);
+                        continue;
+                    }
+                    if (countAttrName != null) {
+                        double count = stats[0] != null && stats[0].getNumSamples() >= 0 ? stats[0].getNumSamples() : 0;
+                        Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, count);
+                    }
+                    if (avgAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                        Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (minAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MIN);
+                        Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (maxAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MAX);
+                        Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (stddevAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD);
+                        Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (sumAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.SUM);
+                        Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
                 }
-
                 Data.updateModified();
                 SFIToolkit.displayln("Data successfully exported to Stata dataset.");
-
             } catch (Exception e) {
                 SFIToolkit.errorln("Error in zonalstatics: " + e.getMessage());
                 SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
@@ -628,6 +753,48 @@ public class ReadRasterAll {
                     SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
                 }
             }
+        }
+        // Helper to determine string length for Data.addVarStr
+        private int determineStringLength(Object value) {
+            if (value == null) return 8;
+            String s = value.toString();
+            int len = s.length();
+            if (len < 8) return 8;
+            if (len > 255) return 255;
+            return len;
+        }
+
+        // Helper to call Data.storeStrFast (for symmetry with Data.storeNumFast)
+        private void storeStrFast(int varIndex, int obs, String value) {
+            Data.storeStr(varIndex, obs, value);
+        }
+
+        // Helper to extract statistics for a zone
+        private org.eclipse.imagen.media.stats.Statistics[] extractStatisticsForZone(org.eclipse.imagen.media.zonal.ZoneGeometry zoneGeometry, int bandIndex) {
+            if (zoneGeometry == null) return null;
+            Map<Integer, Map<org.eclipse.imagen.media.range.Range, org.eclipse.imagen.media.stats.Statistics[]>> statsPerBand = zoneGeometry.getStatsPerBand(bandIndex);
+            if (statsPerBand == null || statsPerBand.isEmpty()) return null;
+            for (Map<org.eclipse.imagen.media.range.Range, org.eclipse.imagen.media.stats.Statistics[]> rangeMap : statsPerBand.values()) {
+                if (rangeMap == null || rangeMap.isEmpty()) continue;
+                for (org.eclipse.imagen.media.stats.Statistics[] statsArray : rangeMap.values()) {
+                    if (statsArray != null && statsArray.length > 0) return statsArray;
+                }
+            }
+            return null;
+        }
+
+        // Helper to get a specific stat value
+        private Double getStatValue(org.eclipse.imagen.media.stats.Statistics[] stats,
+                                   Map<org.eclipse.imagen.media.stats.Statistics.StatsType, Integer> statsIndexMap,
+                                   org.eclipse.imagen.media.stats.Statistics.StatsType type) {
+            if (stats == null || statsIndexMap == null || type == null) return null;
+            Integer idx = statsIndexMap.get(type);
+            if (idx == null || idx < 0 || idx >= stats.length) return null;
+            org.eclipse.imagen.media.stats.Statistics statistic = stats[idx];
+            if (statistic == null) return null;
+            Object result = statistic.getResult();
+            if (result instanceof Number) return ((Number) result).doubleValue();
+            return null;
         }
     }
 
@@ -664,26 +831,15 @@ public class ReadRasterAll {
             SimpleFeatureIterator featureIterator = null;
             SimpleFeatureCollection featureCollection = null;
             GridCoverage2D coverage = null;
-
-            int[] origin = null; int[] size = null;
-            if (originParam != null && !originParam.isEmpty()) {
-                String[] originStrings = originParam.split("[,\\s]+");
-                origin = new int[originStrings.length];
-                for (int i = 0; i < originStrings.length; i++) origin[i] = Integer.parseInt(originStrings[i]);
-            }
-            if (sizeParam != null && !sizeParam.isEmpty()) {
-                String[] sizeStrings = sizeParam.split("[,\\s]+");
-                size = new int[sizeStrings.length];
-                for (int i = 0; i < sizeStrings.length; i++) size[i] = Integer.parseInt(sizeStrings[i]);
-            }
-
+            String rasterCRSName = "Unknown CRS";
             try {
                 Logger.getGlobal().setLevel(Level.SEVERE);
 
+                // Parse requested statistics
                 String[] requestedStats = statsParam == null ? new String[0] : statsParam.toLowerCase().split("\\s+");
                 boolean showCount = false, showAvg = false, showMin = false, showMax = false, showStd = false, showSum = false;
                 for (String stat : requestedStats) {
-                    switch (stat.trim()) {
+                    switch(stat.trim()) {
                         case "count": showCount = true; break;
                         case "avg": showAvg = true; break;
                         case "min": showMin = true; break;
@@ -693,14 +849,26 @@ public class ReadRasterAll {
                     }
                 }
 
+                // Check if vector data file exists
                 File shpFile = new File(shpPath);
-                if (!shpFile.exists()) { SFIToolkit.errorln("Shapefile does not exist: " + shpPath); return; }
+                if (!shpFile.exists()) {
+                    SFIToolkit.errorln("Shapefile does not exist: " + shpPath);
+                    return;
+                }
                 String basePath = shpPath.substring(0, shpPath.lastIndexOf('.'));
-                if (!new File(basePath + ".shx").exists() || !new File(basePath + ".dbf").exists() || !new File(basePath + ".prj").exists()) {
-                    SFIToolkit.displayln("Warning: Missing required shapefile components. .shx/.dbf/.prj are required.");
+                File shxFile = new File(basePath + ".shx");
+                File dbfFile = new File(basePath + ".dbf");
+                File prjFile = new File(basePath + ".prj");
+                if (!shxFile.exists() || !dbfFile.exists() || !prjFile.exists()) {
+                    SFIToolkit.displayln("Warning: Missing required shapefile components:");
+                    if (!shxFile.exists()) SFIToolkit.displayln(" - Missing .shx index file");
+                    if (!dbfFile.exists()) SFIToolkit.displayln(" - Missing .dbf attribute file");
+                    if (!prjFile.exists()) SFIToolkit.displayln(" - Missing .prj attribute file");
+                    SFIToolkit.displayln("A complete shapefile requires .shp, .shx, .dbf and .prj files.");
                     return;
                 }
 
+                // Load vector data (shapefile)
                 ShapefileDataStoreFactory dataStoreFactory = new ShapefileDataStoreFactory();
                 Map<String, Object> shpParams = new HashMap<>();
                 shpParams.put("url", shpFile.toURI().toURL());
@@ -708,12 +876,29 @@ public class ReadRasterAll {
                 shapefileDataStore.setCharset(java.nio.charset.Charset.forName("UTF-8"));
                 featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
 
+                // Check if NetCDF file exists and open
                 try { ncFile = NetcdfDatasets.openDataset(ncPath); }
                 catch (Exception e) { SFIToolkit.errorln("NetCDF file cannot be opened: " + ncPath); SFIToolkit.errorln(SFIToolkit.stackTraceToString(e)); return; }
 
                 Variable ncVar = ncFile.findVariable(varName);
                 if (ncVar == null) { SFIToolkit.errorln("Variable '" + varName + "' not found in NetCDF file"); return; }
 
+                    // Defensive: Check NetCDF variable type and shape
+                    if (!ncVar.getDataType().isNumeric()) {
+                        SFIToolkit.errorln("NetCDF variable '" + varName + "' is not numeric. Type: " + ncVar.getDataType());
+                        return;
+                    }
+                    int[] varShape = ncVar.getShape();
+                    if (varShape == null || varShape.length < 2) {
+                        SFIToolkit.errorln("NetCDF variable '" + varName + "' has invalid shape: " + (varShape == null ? "null" : java.util.Arrays.toString(varShape)));
+                        return;
+                    }
+                    for (int dim : varShape) {
+                        if (dim <= 0) {
+                            SFIToolkit.errorln("NetCDF variable '" + varName + "' has non-positive dimension size: " + dim);
+                            return;
+                        }
+                    }
                 List<ucar.nc2.Dimension> dimensions = ncVar.getDimensions();
                 int numDims = dimensions.size();
                 if (numDims < 2) { SFIToolkit.errorln("Variable '" + varName + "' has " + numDims + " dimensions. Must have at least 2 dimensions."); return; }
@@ -725,9 +910,21 @@ public class ReadRasterAll {
                 if (fillAttr != null) SFIToolkit.displayln("NetCDF variable '" + varName + "' missing value attribute: " + fillAttr.getNumericValue() + " (type: " + fillAttr.getDataType() + ")");
                 else SFIToolkit.displayln("NetCDF variable '" + varName + "' has no _FillValue or missing_value attribute.");
 
-                Array dataArray;
-                if (origin != null && size != null && origin.length == size.length && origin.length == dimensions.size()) dataArray = ncVar.read(origin, size);
-                else dataArray = ncVar.read();
+                    // Parse origin and size parameters
+                    int[] origin = null;
+                    int[] size = null;
+                    if (originParam != null && !originParam.trim().isEmpty()) {
+                        origin = parseIntArray(originParam);
+                    }
+                    if (sizeParam != null && !sizeParam.trim().isEmpty()) {
+                        size = parseIntArray(sizeParam);
+                    }
+                    Array dataArray;
+                    if (origin != null && size != null && origin.length == size.length && origin.length == dimensions.size()) {
+                        dataArray = ncVar.read(origin, size);
+                    } else {
+                        dataArray = ncVar.read();
+                    }
 
                 int[] actualShape = dataArray.getShape();
                 int actualDims = actualShape.length;
@@ -740,11 +937,13 @@ public class ReadRasterAll {
 
                 CoordinateReferenceSystem ncCRS = extractCRSFromNetCDF(ncFile, ncVar);
                 if (ncCRS != null) {
-                    SFIToolkit.displayln("NetCDF CRS detected: " + ncCRS.getName().toString() + ". User-provided CRS is ignored.");
+                    rasterCRSName = ncCRS.getName().toString();
+                    SFIToolkit.displayln("NetCDF CRS detected: " + rasterCRSName + ". User-provided CRS is ignored.");
                 } else {
                     if (userCrs != null && !userCrs.trim().isEmpty()) {
                         SFIToolkit.displayln("NetCDF CRS not detected. Using user-provided CRS: " + userCrs);
                         ncCRS = CRS.decode(userCrs, true);
+                        rasterCRSName = ncCRS.getName().toString();
                     } else {
                         SFIToolkit.errorln("Error: NetCDF file does not contain CRS information and no CRS was provided. Please specify a CRS using the crs() option.");
                         return;
@@ -833,83 +1032,207 @@ public class ReadRasterAll {
                 BufferedImage image = floatArrayToImage(gridData);
                 coverage = factory.create(varName, image, actualEnvelope, bands, null, null);
 
-                CoordinateReferenceSystem rasterCRS = ncCRS; String rasterCRSName = rasterCRS.getName().toString();
-                CoordinateReferenceSystem vectorCRS = shapefileDataStore.getSchema().getCoordinateReferenceSystem(); String vectorCRSName = vectorCRS.getName().toString();
+                CoordinateReferenceSystem rasterCRS = ncCRS;
+                CoordinateReferenceSystem vectorCRS = shapefileDataStore.getSchema().getCoordinateReferenceSystem();
+                String vectorCRSName = vectorCRS.getName().toString();
                 boolean needsReprojection = !CRS.equalsIgnoreMetadata(rasterCRS, vectorCRS);
                 if (needsReprojection) {
                     SFIToolkit.displayln("Reprojecting shapefile from " + vectorCRSName + " to " + rasterCRSName);
                     featureCollection = new ReprojectingFeatureCollection(featureCollection, rasterCRS);
-                } else { SFIToolkit.displayln("Coordinate systems are compatible, no reprojection needed"); }
+                } else {
+                    SFIToolkit.displayln("Coordinate systems are compatible, no reprojection needed");
+                }
 
-                RasterZonalStatistics process = new RasterZonalStatistics();
-                SimpleFeatureCollection resultFeatures = process.execute(coverage, 0, featureCollection, null);
+                // ----------- 新API调用部分 -----------
+                List<SimpleFeature> zoneFeatures = new ArrayList<>();
+                try {
+                    featureIterator = featureCollection.features();
+                    while (featureIterator.hasNext()) {
+                        zoneFeatures.add(featureIterator.next());
+                    }
+                } finally {
+                    if (featureIterator != null) featureIterator.close();
+                }
+                if (zoneFeatures.isEmpty()) {
+                    SFIToolkit.errorln("No features found in the shapefile.");
+                    return;
+                }
 
-                List<SimpleFeature> allFeatures = new ArrayList<>();
-                featureIterator = resultFeatures.features();
-                try { while (featureIterator.hasNext()) allFeatures.add(featureIterator.next()); }
-                finally { if (featureIterator != null) featureIterator.close(); }
+                // 构建统计类型列表
+                List<org.eclipse.imagen.media.stats.Statistics.StatsType> statsToRequest = new ArrayList<>();
+                if (showMin && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN);
+                }
+                if (showMax && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX);
+                }
+                if (showSum && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM);
+                }
+                if (showAvg && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                }
+                if (showStd && !statsToRequest.contains(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD)) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD);
+                }
+                if (statsToRequest.isEmpty()) {
+                    statsToRequest.add(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                }
+                org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
+                int[] bandsArr = new int[] {0};
 
-                int totalFeatures = allFeatures.size();
-                if (totalFeatures <= 0) { SFIToolkit.displayln("No features found in the result set."); return; }
+                org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
+                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
+                        coverage,
+                        bandsArr,
+                        zoneFeatures,
+                        null,
+                        null,
+                        null,
+                        false,
+                        null,
+                        statsArray,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false);
+                if (zoneGeometries == null) {
+                    zoneGeometries = new ArrayList<>();
+                }
+
+                // ----------- 统一输出结构 -----------
+                int totalFeatures = zoneFeatures.size();
+                SFIToolkit.displayln("Total features: " + totalFeatures);
+                Data.setObsTotal(totalFeatures);
 
                 Map<String, Integer> attributeNameMap = new HashMap<>();
                 List<String> idAttrNames = new ArrayList<>();
-                String countAttrName = null, avgAttrName = null, minAttrName = null, maxAttrName = null, stddevAttrName = null, sumAttrName = null;
-                SimpleFeature firstFeature = allFeatures.get(0);
-                for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
-                    String attributeName = firstFeature.getType().getDescriptor(i).getLocalName();
-                    if ("count".equals(attributeName)) { if (showCount) countAttrName = attributeName; }
-                    else if ("avg".equals(attributeName)) { if (showAvg) avgAttrName = attributeName; }
-                    else if ("min".equals(attributeName)) { if (showMin) minAttrName = attributeName; }
-                    else if ("max".equals(attributeName)) { if (showMax) maxAttrName = attributeName; }
-                    else if ("stddev".equals(attributeName)) { if (showStd) stddevAttrName = attributeName; }
-                    else if ("sum".equals(attributeName)) { if (showSum) sumAttrName = attributeName; }
-                    else if (!"the_geom".equals(attributeName) && !"z_the_geom".equals(attributeName) && !"sum_2".equals(attributeName)) { idAttrNames.add(attributeName); }
+                Map<String, String> outputToSourceAttr = new HashMap<>();
+                Map<String, Boolean> idAttrNumeric = new HashMap<>();
+                Map<org.eclipse.imagen.media.stats.Statistics.StatsType, Integer> statsIndexMap = new HashMap<>();
+                for (int i = 0; i < statsToRequest.size(); i++) {
+                    statsIndexMap.put(statsToRequest.get(i), i);
                 }
 
-                Data.setObsTotal(totalFeatures);
+                SimpleFeature firstFeature = zoneFeatures.get(0);
                 int varIndex = 1;
-                for (String idAttr : idAttrNames) {
-                    Object value = firstFeature.getAttribute(idAttr);
-                    if (value instanceof Number) { Data.addVarDouble(idAttr); }
-                    else {
-                        int strLength = 32;
-                        if (value != null) {
-                            String strValue = value.toString();
-                            if (strValue.length() <= 16) strLength = 16; else if (strValue.length() <= 32) strLength = 32; else if (strValue.length() <= 48) strLength = 48;
-                        }
-                        Data.addVarStr(idAttr, strLength);
+                for (int i = 0; i < firstFeature.getType().getAttributeCount(); i++) {
+                    org.geotools.api.feature.type.AttributeDescriptor descriptor = firstFeature.getType().getDescriptor(i);
+                    if (descriptor instanceof org.geotools.api.feature.type.GeometryDescriptor) {
+                        continue;
                     }
-                    attributeNameMap.put(idAttr, varIndex++);
+                    String sourceAttrName = descriptor.getLocalName();
+                    String outputAttrName = "z_" + sourceAttrName;
+                    idAttrNames.add(outputAttrName);
+                    outputToSourceAttr.put(outputAttrName, sourceAttrName);
+                    Object sampleValue = firstFeature.getAttribute(sourceAttrName);
+                    if (sampleValue instanceof Number) {
+                        Data.addVarDouble(outputAttrName);
+                        idAttrNumeric.put(outputAttrName, true);
+                        SFIToolkit.displayln("Created numeric variable: " + outputAttrName);
+                    } else {
+                        Data.addVarStr(outputAttrName, determineStringLength(sampleValue));
+                        idAttrNumeric.put(outputAttrName, false);
+                        SFIToolkit.displayln("Created string variable: " + outputAttrName);
+                    }
+                    attributeNameMap.put(outputAttrName, varIndex++);
                 }
-                if (showCount && countAttrName != null) { Data.addVarDouble("count"); attributeNameMap.put(countAttrName, varIndex++); }
-                if (showAvg && avgAttrName != null) { Data.addVarDouble("avg"); attributeNameMap.put(avgAttrName, varIndex++); }
-                if (showMin && minAttrName != null) { Data.addVarDouble("min"); attributeNameMap.put(minAttrName, varIndex++); }
-                if (showMax && maxAttrName != null) { Data.addVarDouble("max"); attributeNameMap.put(maxAttrName, varIndex++); }
-                if (showStd && stddevAttrName != null) { Data.addVarDouble("std"); attributeNameMap.put(stddevAttrName, varIndex++); }
-                if (showSum && sumAttrName != null) { Data.addVarDouble("sum"); attributeNameMap.put(sumAttrName, varIndex++); }
+
+                String countAttrName = null;
+                String avgAttrName = null;
+                String minAttrName = null;
+                String maxAttrName = null;
+                String stddevAttrName = null;
+                String sumAttrName = null;
+
+                if (showCount) {
+                    countAttrName = "count";
+                    Data.addVarDouble(countAttrName);
+                    attributeNameMap.put(countAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: count");
+                }
+                if (showAvg && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN)) {
+                    avgAttrName = "avg";
+                    Data.addVarDouble(avgAttrName);
+                    attributeNameMap.put(avgAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: avg");
+                }
+                if (showMin && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MIN)) {
+                    minAttrName = "min";
+                    Data.addVarDouble(minAttrName);
+                    attributeNameMap.put(minAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: min");
+                }
+                if (showMax && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.MAX)) {
+                    maxAttrName = "max";
+                    Data.addVarDouble(maxAttrName);
+                    attributeNameMap.put(maxAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: max");
+                }
+                if (showStd && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD)) {
+                    stddevAttrName = "std";
+                    Data.addVarDouble(stddevAttrName);
+                    attributeNameMap.put(stddevAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: std");
+                }
+                if (showSum && statsIndexMap.containsKey(org.eclipse.imagen.media.stats.Statistics.StatsType.SUM)) {
+                    sumAttrName = "sum";
+                    Data.addVarDouble(sumAttrName);
+                    attributeNameMap.put(sumAttrName, varIndex++);
+                    SFIToolkit.displayln("Created numeric variable: sum");
+                }
 
                 for (int i = 0; i < totalFeatures; i++) {
-                    SimpleFeature feature = allFeatures.get(i);
+                    SimpleFeature feature = zoneFeatures.get(i);
                     int stataObs = i + 1;
-                    for (String idAttr : idAttrNames) {
-                        Object value = feature.getAttribute(idAttr);
-                        int stataVar = attributeNameMap.get(idAttr);
-                        if (value != null) {
-                            if (value instanceof Number) Data.storeNumFast(stataVar, stataObs, ((Number) value).doubleValue()); else Data.storeStr(stataVar, stataObs, value.toString());
+                    for (String outputAttrName : idAttrNames) {
+                        String sourceAttrName = outputToSourceAttr.get(outputAttrName);
+                        Object value = feature.getAttribute(sourceAttrName);
+                        if (idAttrNumeric.get(outputAttrName)) {
+                            Data.storeNumFast(attributeNameMap.get(outputAttrName), stataObs, value == null ? Double.NaN : ((Number) value).doubleValue());
+                        } else {
+                            Data.storeStr(attributeNameMap.get(outputAttrName), stataObs, value == null ? "" : value.toString());
                         }
                     }
-                    if (showCount && countAttrName != null) { Object v = feature.getAttribute(countAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showAvg && avgAttrName != null) { Object v = feature.getAttribute(avgAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showMin && minAttrName != null) { Object v = feature.getAttribute(minAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showMax && maxAttrName != null) { Object v = feature.getAttribute(maxAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showStd && stddevAttrName != null) { Object v = feature.getAttribute(stddevAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, ((Number) v).doubleValue()); }
-                    if (showSum && sumAttrName != null) { Object v = feature.getAttribute(sumAttrName); if (v != null) Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, ((Number) v).doubleValue()); }
+                    org.eclipse.imagen.media.zonal.ZoneGeometry zoneGeometry = i < zoneGeometries.size() ? zoneGeometries.get(i) : null;
+                    org.eclipse.imagen.media.stats.Statistics[] stats = extractStatisticsForZone(zoneGeometry, 0);
+                    if (stats == null || stats.length == 0) {
+                        if (countAttrName != null) Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, 0);
+                        if (avgAttrName != null) Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, Double.NaN);
+                        if (minAttrName != null) Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, Double.NaN);
+                        if (maxAttrName != null) Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, Double.NaN);
+                        if (stddevAttrName != null) Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, Double.NaN);
+                        if (sumAttrName != null) Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, Double.NaN);
+                        continue;
+                    }
+                    if (countAttrName != null) {
+                        double count = stats[0] != null && stats[0].getNumSamples() >= 0 ? stats[0].getNumSamples() : 0;
+                        Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, count);
+                    }
+                    if (avgAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MEAN);
+                        Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (minAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MIN);
+                        Data.storeNumFast(attributeNameMap.get(minAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (maxAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.MAX);
+                        Data.storeNumFast(attributeNameMap.get(maxAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (stddevAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.DEV_STD);
+                        Data.storeNumFast(attributeNameMap.get(stddevAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
+                    if (sumAttrName != null) {
+                        Double v = getStatValue(stats, statsIndexMap, org.eclipse.imagen.media.stats.Statistics.StatsType.SUM);
+                        Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, v == null ? Double.NaN : v);
+                    }
                 }
-
                 Data.updateModified();
                 SFIToolkit.displayln("Data successfully exported to Stata dataset.");
-
             } catch (Exception e) {
                 SFIToolkit.errorln("Error in nzonalstatics: " + e.getMessage()); SFIToolkit.errorln(SFIToolkit.stackTraceToString(e));
             } finally {
@@ -924,6 +1247,59 @@ public class ReadRasterAll {
                 }
             }
         }
+
+            // Helper to parse comma/space separated int array string
+            private int[] parseIntArray(String param) {
+                String[] tokens = param.trim().split("[ ,]+");
+                int[] arr = new int[tokens.length];
+                for (int i = 0; i < tokens.length; i++) {
+                    arr[i] = Integer.parseInt(tokens[i]);
+                }
+                return arr;
+            }
+
+            // Helper to determine string length for Data.addVarStr
+            private int determineStringLength(Object value) {
+                if (value == null) return 8;
+                String s = value.toString();
+                int len = s.length();
+                if (len < 8) return 8;
+                if (len > 255) return 255;
+                return len;
+            }
+
+            // Helper to call Data.storeStrFast (for symmetry with Data.storeNumFast)
+            private void storeStrFast(int varIndex, int obs, String value) {
+                Data.storeStr(varIndex, obs, value);
+            }
+
+            // Helper to extract statistics for a zone
+            private org.eclipse.imagen.media.stats.Statistics[] extractStatisticsForZone(org.eclipse.imagen.media.zonal.ZoneGeometry zoneGeometry, int bandIndex) {
+                if (zoneGeometry == null) return null;
+                Map<Integer, Map<org.eclipse.imagen.media.range.Range, org.eclipse.imagen.media.stats.Statistics[]>> statsPerBand = zoneGeometry.getStatsPerBand(bandIndex);
+                if (statsPerBand == null || statsPerBand.isEmpty()) return null;
+                for (Map<org.eclipse.imagen.media.range.Range, org.eclipse.imagen.media.stats.Statistics[]> rangeMap : statsPerBand.values()) {
+                    if (rangeMap == null || rangeMap.isEmpty()) continue;
+                    for (org.eclipse.imagen.media.stats.Statistics[] statsArray : rangeMap.values()) {
+                        if (statsArray != null && statsArray.length > 0) return statsArray;
+                    }
+                }
+                return null;
+            }
+
+            // Helper to get a specific stat value
+            private Double getStatValue(org.eclipse.imagen.media.stats.Statistics[] stats,
+                                       Map<org.eclipse.imagen.media.stats.Statistics.StatsType, Integer> statsIndexMap,
+                                       org.eclipse.imagen.media.stats.Statistics.StatsType type) {
+                if (stats == null || statsIndexMap == null || type == null) return null;
+                Integer idx = statsIndexMap.get(type);
+                if (idx == null || idx < 0 || idx >= stats.length) return null;
+                org.eclipse.imagen.media.stats.Statistics statistic = stats[idx];
+                if (statistic == null) return null;
+                Object result = statistic.getResult();
+                if (result instanceof Number) return ((Number) result).doubleValue();
+                return null;
+            }
 
         private CoordinateReferenceSystem extractCRSFromNetCDF(NetcdfDataset ncFile, Variable var) {
             try {
