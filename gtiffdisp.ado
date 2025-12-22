@@ -95,7 +95,7 @@ local using = usubinstr(`"`using'"',"\","/",.)
 
 local rc = fileexists("`using'")
 if `rc'==0{
-	di as error `"`using'" NOT found"'
+	di as error `"`using' NOT found"'
 	exit
 }
 
