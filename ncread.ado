@@ -280,6 +280,8 @@ return local file `file'
 
 end
 
+
+////////////////////////////////////////////////use compiled jars////////////////////////////////////
 cap program drop ncread_2 
 program define ncread_2 
 version 17
