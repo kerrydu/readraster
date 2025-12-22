@@ -307,33 +307,6 @@ syntax [anything] using/,  [Size(numlist integer) Origin(numlist integer >0) CLE
 
 
 
-cap findfile netcdfAll-5.9.1.jar
-
-if _rc{
-    cap findfile path_ncreadjar.ado 
-    if _rc {
-        di as error "jar path NOT specified, use netcdf_init for setting up"
-        disp "see " `"{help netcdf_init:help netcdf_init}"'
-        exit
-        
-    }
-
-    path_ncreadjar
-    local path `r(path)'
-
-    cap findfile netcdfAll-5.9.1.jar, path(`"`path'"')
-    if _rc {
-        di as error "Missing Java dependencies, netcdfAll-5.9.1.jar NOT found"
-        di as error "make sure netcdfAll-5.9.1.jar exists in your specified directory"
-		disp "see " `"{help netcdf_init:help netcdf_init}"' " for setting up"
-        exit
-    }
-
-    qui adopath ++ `"`path'"'
-
-}
-
-
 removequotes,file(`"`using'"')
 local file `r(file)'
 local file = subinstr(`"`file'"',"\","/",.)
@@ -407,8 +380,8 @@ program define ncinfo_2
     local file = subinstr(`"`file'"',"\","/",.)
     
     // // 使用javacall调用新的JAR文件
-    // javacall NetCDFUtils printNetCDFStructureEntry, jars(NetCDFUtils-complete.jar) args("`file'")
-    netcdfutils NetCDFUtils.printNetCDFStructure("`file'")
+    javacall NetCDFUtils printNetCDFStructureEntry, jars(NetCDFUtils-complete.jar) args("`file'")
+    //netcdfutils NetCDFUtils.printNetCDFStructure("`file'")
 
 end
 
@@ -548,32 +521,6 @@ end
 cap program drop ncdisp_2
 program define ncdisp_2,rclass
 version 17
-
-cap findfile netcdfAll-5.9.1.jar
-
-if _rc{
-    cap findfile path_ncreadjar.ado 
-    if _rc {
-        di as error "jar path NOT specified, use netcdf_init for setting up"
-        disp "see " `"{help netcdf_init:help netcdf_init}"'
-        exit
-        
-    }
-
-    path_ncreadjar
-    local path `r(path)'
-
-    cap findfile netcdfAll-5.9.1.jar, path(`"`path'"')
-    if _rc {
-        di as error "Missing Java dependencies, netcdfAll-5.9.1.jar NOT found"
-        di as error "make sure netcdfAll-5.9.1.jar exists in your specified directory"
-		disp "see " `"{help netcdf_init:help netcdf_init}"' " for setting up"
-        exit
-    }
-
-    qui adopath ++ `"`path'"'
-
-}
 
 
     // 允许 varname 可选
