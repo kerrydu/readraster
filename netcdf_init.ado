@@ -39,7 +39,12 @@ else if `c(version)'>=19{
 }
 
 if "`compiled'"!=""{
-	net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/")
+	cap noi net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/")
+	if _rc == 602{
+       di 
+       di as red "use the following command to replace the existing jar files:"
+       di `"net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace"'
+	}
 	exit
 }
 
