@@ -38,8 +38,11 @@ else {
         gettoken loci localversion : localversion, p(".")
         gettoken giti gitversion : gitversion, p(".")		
 	  }
+	    di
+		di "The Java dependencies can be updated via:"
+		di "          geotools_init, compiled"
+	    di "          netcdf_init,   compiled"
     }
-
 }
 
 end
