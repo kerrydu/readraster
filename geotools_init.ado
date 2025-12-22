@@ -42,7 +42,7 @@ else if `c(version)'>=19{
 if "`compiled'"!=""{
 	noi cap net install readrasterjar, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/)
 	if _rc == 602 {
-		di "use the following command to replace the existing jar files:"
+		di as red "use the following command to replace the existing jar files:"
 		di `" net install readrasterjar, from(https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/) replace"'
     }
 	exit
