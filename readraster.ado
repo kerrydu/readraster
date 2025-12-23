@@ -16,7 +16,7 @@ if "`update'" == "" {
 	        if "`loci'" !="" & "`giti'" !="" {
 	            if "`loci'" < "`giti'" {
 					di "run the following command to update the package"
-	                di  "      readraster, upadte"
+	                di  "      readraster, update"
 	            }
 	         }
         gettoken loci localversion : localversion, p(".")
