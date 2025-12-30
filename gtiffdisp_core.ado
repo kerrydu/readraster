@@ -15,7 +15,8 @@ removequotes,file(`using')
 
 local using = usubinstr(`"`using'"',"\","/",.)
 // 判断路径是否为绝对路径
-if !strmatch("`using'", "*:/*") & !strmatch("`using'", "/*") {
+//if !strmatch("`using'", "*:/*") & !strmatch("`using'", "/*") {
+if !strpos("`using'", "/") {
     // 如果是相对路径，拼接当前工作目录
     local using = "`c(pwd)'/`using'"
 }
