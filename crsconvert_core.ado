@@ -23,7 +23,8 @@ if strpos(lower("`from'"), ".tif") | strpos(lower("`from'"), ".tiff") | strpos(l
     local from `r(file)'
     local from = subinstr("`from'", "\", "/", .)
      // 只对相对路径拼接 c(pwd)
-     if !regexm("`from'", "^[A-Za-z]:/") & !strmatch("`from'", "/*") {
+     //if !regexm("`from'", "^[A-Za-z]:/") & !strmatch("`from'", "/*") {
+     if  !strpos("`from'", "/") 
         local from = "`c(pwd)'/`from'"
     }
     local from = subinstr("`from'", "\", "/", .)
@@ -34,7 +35,8 @@ if strpos(lower("`to'"), ".tif") | strpos(lower("`to'"), ".tiff") | strpos(lower
     removequotes, file(`to')
     local to `r(file)'
     local to = subinstr("`to'", "\", "/", .)
-     if !regexm("`to'", "^[A-Za-z]:/") & !strmatch("`to'", "/*") {
+    // if !regexm("`to'", "^[A-Za-z]:/") & !strmatch("`to'", "/*") {
+     if  !strpos("`to'", "/") {
         local to = "`c(pwd)'/`to'"
     }
     local to = subinstr("`to'", "\", "/", .)
