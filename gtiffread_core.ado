@@ -30,7 +30,8 @@ local using `anything'
 
 removequotes, file(`using')
 local using = usubinstr(`"`using'"',"\","/",.)
-if !strmatch("`using'", "*:/*") & !strmatch("`using'", "/*") {
+//if !strmatch("`using'", "*:/*") & !strmatch("`using'", "/*") {
+if !strpos("`using'", "/") {
     local using = "`c(pwd)'/`using'"
 }
 local using = usubinstr(`"`using'"',"\","/",.)
@@ -44,7 +45,8 @@ if strpos(lower("`crscode'"), ".tif") | strpos(lower("`crscode'"), ".shp") {
     removequotes, file(`crscode')
     local crscode `r(file)'
     local crscode = subinstr("`crscode'", "\", "/", .)
-    if !strmatch("`crscode'", "*:\\*") & !strmatch("`crscode'", "/*") {
+    //if !strmatch("`crscode'", "*:\\*") & !strmatch("`crscode'", "/*") {
+   if !strpos("`crscode'", "/") {
         local crscode = "`c(pwd)'/`crscode'"
     }
     local crscode = subinstr("`crscode'", "\", "/", .)
