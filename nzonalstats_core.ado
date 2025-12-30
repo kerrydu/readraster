@@ -43,7 +43,7 @@ local using = subinstr(`"`using'"',"\","/",.)
 local shpfile = subinstr(`"`shpfile'"',"\","/",.)
 // 判断路径是否为绝对路径
 //if !regexm("`using'", "^(https?|ftp|s3|gs|/vsicurl/|/vsis3/|/vsigs/|/vsiaz/|/vsicurl_streaming/|/vsihttp/|/vsimem/|/vsizip/|/vsitar/|/vsicurl/).*") ///
-    & !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
+//    & !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
 if !strpos("`using'", "/") {
     local using = "`c(pwd)'/`using'"
 }
