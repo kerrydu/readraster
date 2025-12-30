@@ -44,14 +44,16 @@ removequotes, file(`using')
 local using = subinstr(`"`using'"',"\","/",.)
 local shpfile = subinstr(`"`shpfile'"',"\","/",.)
 // 判断路径是否为绝对路径
-if !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
+//if !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
+if !strpos("`using'", "/")  {
     // 如果是相对路径，拼接当前工作目录
     local using = "`c(pwd)'/`using'"
 }
 removequotes, file(`shpfile')
 local shpfile `r(file)'
 // 判断路径是否为绝对路径
-if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
+//if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
+if !strpos("`shpfile'", "/") {
     // 如果是相对路径，拼接当前工作目录
     local shpfile = "`c(pwd)'/`shpfile'"
 }
