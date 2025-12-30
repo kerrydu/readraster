@@ -42,15 +42,17 @@ removequotes, file(`using')
 local using = subinstr(`"`using'"',"\","/",.)
 local shpfile = subinstr(`"`shpfile'"',"\","/",.)
 // 判断路径是否为绝对路径
-if !regexm("`using'", "^(https?|ftp|s3|gs|/vsicurl/|/vsis3/|/vsigs/|/vsiaz/|/vsicurl_streaming/|/vsihttp/|/vsimem/|/vsizip/|/vsitar/|/vsicurl/).*") ///
+//if !regexm("`using'", "^(https?|ftp|s3|gs|/vsicurl/|/vsis3/|/vsigs/|/vsiaz/|/vsicurl_streaming/|/vsihttp/|/vsimem/|/vsizip/|/vsitar/|/vsicurl/).*") ///
     & !strmatch("`using'", "*:\\*") & !strmatch("`using'", "/*") {
+if !strpos("`using'", "/") {
     local using = "`c(pwd)'/`using'"
 }
 
 removequotes, file(`shpfile')
 local shpfile `r(file)'
 // 判断路径是否为绝对路径
-if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
+//if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
+if !strpos("`shpfile'", "/") {
     // 如果是相对路径，拼接当前工作目录
     local shpfile = "`c(pwd)'/`shpfile'"
 }
