@@ -1,4 +1,4 @@
-*! version 3.0.6, 2025-12-21
+*! version 3.0.7, 2025-12-30
 program define readraster
 
 syntax, [update]
