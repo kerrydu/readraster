@@ -569,7 +569,7 @@ public class ReadRasterAll {
                 
                 for (SimpleFeature feature : allFeatures) {
                     Object geomObj = feature.getDefaultGeometry();
-                    if (geomObj instanceof Geometry) {
+                    if (geomObj != null && geomObj instanceof Geometry) {
                         Geometry geom = (Geometry) geomObj;
                         String geomType = geom.getGeometryType();
                         
@@ -577,8 +577,7 @@ public class ReadRasterAll {
                             zoneFeatures.add(feature);
                         } else {
                             // Track filtered geometry types
-                            filteredGeometryTypes.put(geomType, 
-                                filteredGeometryTypes.getOrDefault(geomType, 0) + 1);
+                            filteredGeometryTypes.merge(geomType, 1, Integer::sum);
                         }
                     }
                 }
