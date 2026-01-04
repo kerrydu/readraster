@@ -57,6 +57,10 @@ import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.geotools.util.factory.Hints;
 
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
+
 import com.stata.sfi.Data;
 import com.stata.sfi.SFIToolkit;
 import com.stata.sfi.Scalar;
@@ -543,18 +547,55 @@ public class ReadRasterAll {
                     }
 
                 // Materialize feature collection into a list for processing and export
-                List<SimpleFeature> zoneFeatures = new ArrayList<>();
+                List<SimpleFeature> allFeatures = new ArrayList<>();
                 try {
                     featureIterator = featureCollection.features();
                     while (featureIterator.hasNext()) {
-                        zoneFeatures.add(featureIterator.next());
+                        allFeatures.add(featureIterator.next());
                     }
                 } finally {
                     if (featureIterator != null) featureIterator.close();
                 }
 
-                if (zoneFeatures.isEmpty()) {
+                if (allFeatures.isEmpty()) {
                     SFIToolkit.errorln("No features found in the shapefile.");
+                    return;
+                }
+
+                // Filter features to only include Polygon and MultiPolygon geometries
+                int totalFeatureCount = allFeatures.size();
+                List<SimpleFeature> zoneFeatures = new ArrayList<>();
+                Map<String, Integer> filteredGeometryTypes = new HashMap<>();
+                
+                for (SimpleFeature feature : allFeatures) {
+                    Object geomObj = feature.getDefaultGeometry();
+                    if (geomObj instanceof Geometry) {
+                        Geometry geom = (Geometry) geomObj;
+                        String geomType = geom.getGeometryType();
+                        
+                        if (geom instanceof Polygon || geom instanceof MultiPolygon) {
+                            zoneFeatures.add(feature);
+                        } else {
+                            // Track filtered geometry types
+                            filteredGeometryTypes.put(geomType, 
+                                filteredGeometryTypes.getOrDefault(geomType, 0) + 1);
+                        }
+                    }
+                }
+
+                // Display filtering statistics if any features were filtered
+                int filteredCount = totalFeatureCount - zoneFeatures.size();
+                if (filteredCount > 0) {
+                    SFIToolkit.displayln("Warning: Filtered out " + filteredCount + " non-polygon feature(s) from " + totalFeatureCount + " total features");
+                    SFIToolkit.displayln("Filtered geometry types:");
+                    for (Map.Entry<String, Integer> entry : filteredGeometryTypes.entrySet()) {
+                        SFIToolkit.displayln("  - " + entry.getKey() + ": " + entry.getValue() + " feature(s)");
+                    }
+                    SFIToolkit.displayln("Only Polygon and MultiPolygon geometries are supported for zonal statistics");
+                }
+
+                if (zoneFeatures.isEmpty()) {
+                    SFIToolkit.errorln("No valid polygon features found in the shapefile after filtering.");
                     return;
                 }
 
