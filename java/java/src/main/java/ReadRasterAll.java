@@ -586,6 +586,8 @@ public class ReadRasterAll {
                 int totalFeatureCount = allFeatures.size();
                 List<SimpleFeature> zoneFeatures = new ArrayList<>();
                 Map<String, Integer> filteredGeometryTypes = new HashMap<>();
+                int invalidPolygonCount = 0;
+                int emptyPolygonCount = 0;
                 
                 for (SimpleFeature feature : allFeatures) {
                     Object geomObj = feature.getDefaultGeometry();
@@ -594,6 +596,17 @@ public class ReadRasterAll {
                         String geomType = geom.getGeometryType();
                         
                         if (geom instanceof Polygon || geom instanceof MultiPolygon) {
+                            if (geom.isEmpty()) {
+                                emptyPolygonCount++;
+                                filteredGeometryTypes.merge("Empty " + geomType, 1, Integer::sum);
+                                continue;
+                            }
+                            if (!geom.isValid()) {
+                                invalidPolygonCount++;
+                                filteredGeometryTypes.merge("Invalid " + geomType, 1, Integer::sum);
+                                SFIToolkit.displayln("Skipping invalid " + geomType + " geometry in feature " + feature.getID());
+                                continue;
+                            }
                             zoneFeatures.add(feature);
                         } else {
                             // Track filtered geometry types
@@ -611,6 +624,14 @@ public class ReadRasterAll {
                         SFIToolkit.displayln("  - " + entry.getKey() + ": " + entry.getValue() + " feature(s)");
                     }
                     SFIToolkit.displayln("Only Polygon and MultiPolygon geometries are supported for zonal statistics");
+                }
+
+                if (invalidPolygonCount > 0) {
+                    SFIToolkit.displayln("Skipped " + invalidPolygonCount + " invalid polygon feature(s); fix geometry or remove them to include their statistics.");
+                }
+
+                if (emptyPolygonCount > 0) {
+                    SFIToolkit.displayln("Skipped " + emptyPolygonCount + " empty polygon feature(s); ensure geometries contain area before rerunning.");
                 }
 
                 if (zoneFeatures.isEmpty()) {
@@ -1104,17 +1125,68 @@ public class ReadRasterAll {
                 }
 
                 // ----------- 新API调用部分 -----------
+                int totalFeatureCount = 0;
                 List<SimpleFeature> zoneFeatures = new ArrayList<>();
+                Map<String, Integer> filteredGeometryTypes = new HashMap<>();
+                int invalidPolygonCount = 0;
+                int emptyPolygonCount = 0;
                 try {
                     featureIterator = featureCollection.features();
                     while (featureIterator.hasNext()) {
-                        zoneFeatures.add(featureIterator.next());
+                        SimpleFeature feature = featureIterator.next();
+                        totalFeatureCount++;
+
+                        Object geomObj = feature.getDefaultGeometry();
+                        if (geomObj instanceof Geometry) {
+                            Geometry geom = (Geometry) geomObj;
+                            String geomType = geom.getGeometryType();
+                            if (geom instanceof Polygon || geom instanceof MultiPolygon) {
+                                if (geom.isEmpty()) {
+                                    emptyPolygonCount++;
+                                    filteredGeometryTypes.merge("Empty " + geomType, 1, Integer::sum);
+                                    continue;
+                                }
+                                if (!geom.isValid()) {
+                                    invalidPolygonCount++;
+                                    filteredGeometryTypes.merge("Invalid " + geomType, 1, Integer::sum);
+                                    SFIToolkit.displayln("Skipping invalid " + geomType + " geometry in feature " + feature.getID());
+                                    continue;
+                                }
+                                zoneFeatures.add(feature);
+                            } else {
+                                filteredGeometryTypes.merge(geomType, 1, Integer::sum);
+                            }
+                        } else {
+                            String geomType = geomObj == null ? "null" : geomObj.getClass().getSimpleName();
+                            filteredGeometryTypes.merge(geomType, 1, Integer::sum);
+                        }
                     }
                 } finally {
                     if (featureIterator != null) featureIterator.close();
                 }
+
+                int filteredCount = totalFeatureCount - zoneFeatures.size();
+                if (filteredCount > 0) {
+                    SFIToolkit.displayln("Warning: Filtered out " + filteredCount + " non-polygon feature(s) from " + totalFeatureCount + " total features");
+                    if (!filteredGeometryTypes.isEmpty()) {
+                        SFIToolkit.displayln("Filtered geometry types:");
+                        for (Map.Entry<String, Integer> entry : filteredGeometryTypes.entrySet()) {
+                            SFIToolkit.displayln("  - " + entry.getKey() + ": " + entry.getValue() + " feature(s)");
+                        }
+                    }
+                    SFIToolkit.displayln("Only Polygon and MultiPolygon geometries are supported for zonal statistics.");
+                }
+
+                if (invalidPolygonCount > 0) {
+                    SFIToolkit.displayln("Skipped " + invalidPolygonCount + " invalid polygon feature(s); fix geometry or remove them to include their statistics.");
+                }
+
+                if (emptyPolygonCount > 0) {
+                    SFIToolkit.displayln("Skipped " + emptyPolygonCount + " empty polygon feature(s); ensure geometries contain area before rerunning.");
+                }
+
                 if (zoneFeatures.isEmpty()) {
-                    SFIToolkit.errorln("No features found in the shapefile.");
+                    SFIToolkit.errorln("No valid polygon features found in the shapefile after filtering.");
                     return;
                 }
 

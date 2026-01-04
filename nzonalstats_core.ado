@@ -667,6 +667,8 @@ public class nzonalstatics {
             int totalFeatureCount = 0;
             List<SimpleFeature> zoneFeatures = new ArrayList<>();
             Map<String, Integer> filteredGeometryTypes = new HashMap<>();
+            int invalidPolygonCount = 0;
+            int emptyPolygonCount = 0;
             try {
                 featureIterator = featureCollection.features();
                 while (featureIterator.hasNext()) {
@@ -678,6 +680,17 @@ public class nzonalstatics {
                         Geometry geom = (Geometry) geomObj;
                         String geomType = geom.getGeometryType();
                         if (geom instanceof Polygon || geom instanceof MultiPolygon) {
+                            if (geom.isEmpty()) {
+                                emptyPolygonCount++;
+                                filteredGeometryTypes.merge("Empty " + geomType, 1, Integer::sum);
+                                continue;
+                            }
+                            if (!geom.isValid()) {
+                                invalidPolygonCount++;
+                                filteredGeometryTypes.merge("Invalid " + geomType, 1, Integer::sum);
+                                System.out.println("Skipping invalid " + geomType + " geometry in feature " + feature.getID());
+                                continue;
+                            }
                             zoneFeatures.add(feature);
                         } else {
                             filteredGeometryTypes.merge(geomType, 1, Integer::sum);
@@ -704,6 +717,14 @@ public class nzonalstatics {
                     }
                 }
                 System.out.println("Only Polygon and MultiPolygon geometries are supported for zonal statistics.");
+            }
+
+            if (invalidPolygonCount > 0) {
+                System.out.println("Skipped " + invalidPolygonCount + " invalid polygon feature(s); fix geometry or remove them to include their statistics.");
+            }
+
+            if (emptyPolygonCount > 0) {
+                System.out.println("Skipped " + emptyPolygonCount + " empty polygon feature(s); ensure geometries contain area before rerunning.");
             }
 
             if (zoneFeatures.isEmpty()) {
