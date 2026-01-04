@@ -205,6 +205,9 @@ import org.eclipse.imagen.media.range.Range;
 import org.eclipse.imagen.media.stats.Statistics;
 import org.eclipse.imagen.media.stats.Statistics.StatsType;
 import org.eclipse.imagen.media.zonal.ZoneGeometry;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
 
 // GeoTools API imports
 import org.geotools.api.feature.simple.SimpleFeature;
@@ -660,12 +663,29 @@ public class nzonalstatics {
             }
 
 
-            // Materialize shapefile features for repeated use
+            // Materialize shapefile features for repeated use, keep only polygonal geometries
+            int totalFeatureCount = 0;
             List<SimpleFeature> zoneFeatures = new ArrayList<>();
+            Map<String, Integer> filteredGeometryTypes = new HashMap<>();
             try {
                 featureIterator = featureCollection.features();
                 while (featureIterator.hasNext()) {
-                    zoneFeatures.add(featureIterator.next());
+                    SimpleFeature feature = featureIterator.next();
+                    totalFeatureCount++;
+
+                    Object geomObj = feature.getDefaultGeometry();
+                    if (geomObj instanceof Geometry) {
+                        Geometry geom = (Geometry) geomObj;
+                        String geomType = geom.getGeometryType();
+                        if (geom instanceof Polygon || geom instanceof MultiPolygon) {
+                            zoneFeatures.add(feature);
+                        } else {
+                            filteredGeometryTypes.merge(geomType, 1, Integer::sum);
+                        }
+                    } else {
+                        String geomType = geomObj == null ? "null" : geomObj.getClass().getSimpleName();
+                        filteredGeometryTypes.merge(geomType, 1, Integer::sum);
+                    }
                 }
             } finally {
                 if (featureIterator != null) {
@@ -674,8 +694,20 @@ public class nzonalstatics {
                 }
             }
 
+            int filteredCount = totalFeatureCount - zoneFeatures.size();
+            if (filteredCount > 0) {
+                System.out.println("Warning: Filtered out " + filteredCount + " non-polygon feature(s) from " + totalFeatureCount + " total features");
+                if (!filteredGeometryTypes.isEmpty()) {
+                    System.out.println("Filtered geometry types:");
+                    for (Map.Entry<String, Integer> entry : filteredGeometryTypes.entrySet()) {
+                        System.out.println("  - " + entry.getKey() + ": " + entry.getValue() + " feature(s)");
+                    }
+                }
+                System.out.println("Only Polygon and MultiPolygon geometries are supported for zonal statistics.");
+            }
+
             if (zoneFeatures.isEmpty()) {
-                System.out.println("No features found in the shapefile.");
+                System.out.println("No valid polygon features found in the shapefile after filtering.");
                 return;
             }
 

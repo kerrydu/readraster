@@ -184,7 +184,7 @@ removequotes, file(`shpfile')
 local shpfile `r(file)'
 // 判断路径是否为绝对路径
 //if !strmatch("`shpfile'", "*:\\*") & !strmatch("`shpfile'", "/*") {
-if strpos("`shpfile'", "/") {
+if !strpos("`shpfile'", "/") {
     // 如果是相对路径，拼接当前工作目录
     local shpfile = "`c(pwd)'/`shpfile'"
 }

@@ -50,6 +50,7 @@ import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
+import org.geotools.data.store.ContentFeatureSource;
 import org.geotools.data.store.ReprojectingFeatureCollection;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.Position2D;
@@ -467,7 +468,26 @@ public class ReadRasterAll {
                 shpParams.put("url", shpFile.toURI().toURL());
                 shapefileDataStore = (ShapefileDataStore) dataStoreFactory.createDataStore(shpParams);
                 shapefileDataStore.setCharset(java.nio.charset.Charset.forName("UTF-8"));
-                featureCollection = shapefileDataStore.getFeatureSource().getFeatures();
+
+                ContentFeatureSource featureSource;
+                try {
+                    featureSource = shapefileDataStore.getFeatureSource();
+                } catch (IndexOutOfBoundsException ioobe) {
+                    SFIToolkit.errorln("Shapefile schema could not be read (likely empty DBF or corrupted .dbf/.shx). Please open the shapefile in a GIS/ogrinfo to ensure it has at least one attribute field and a valid index file.");
+                    return;
+                }
+
+                if (featureSource.getSchema() == null || featureSource.getSchema().getAttributeCount() == 0) {
+                    SFIToolkit.errorln("Shapefile has an empty/invalid DBF schema. Ensure the .dbf exists and contains at least one attribute column.");
+                    return;
+                }
+
+                featureCollection = featureSource.getFeatures();
+
+                if (featureCollection == null || featureCollection.size() == 0) {
+                    SFIToolkit.errorln("Shapefile contains zero features. Nothing to aggregate.");
+                    return;
+                }
 
                 // Check if raster data file exists
                 File tiffFile = new File(tiffPath);
