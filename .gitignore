@@ -40,3 +40,8 @@ Thumbs.db
 *.smcl
 *.log
 *.tex
+
+# Java build artifacts
+java/java/build/
+java/java/.gradle/
+java/java/target/
