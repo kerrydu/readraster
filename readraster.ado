@@ -46,9 +46,11 @@ else {
         gettoken giti gitversion : gitversion, p(".")		
 	  }
 	    di
-		di "The Java dependencies can be updated via:"
-		di "          geotools_init, compiled"
-	    di "          netcdf_init,   compiled"
+		*di "The Java dependencies can be updated via:"
+		*di "          geotools_init, compiled"
+	    *di "          netcdf_init,   compiled"
+		cap noi net install readrasterjar, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
+		cap noi net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
     }
 }
 
