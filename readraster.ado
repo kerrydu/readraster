@@ -39,7 +39,7 @@ else {
 	        if "`loci'" !="" & "`giti'" !="" {
 	            if "`loci'" < "`giti'" {
 	                di "updating readraster...."
-	                net install readraster, from(https://raw.github.com/kerrydu/readraster/develop) replace force
+	                net install readraster, from(https://raw.github.com/kerrydu/readraster/develop) replace
 	            }
 	        }
         gettoken loci localversion : localversion, p(".")
