@@ -1,4 +1,4 @@
-*! version 3.0.9, 2026-01-04
+*! version 3.1.0, 2026-01-04
 program define readraster
 
 syntax, [update]
@@ -40,17 +40,18 @@ else {
 	            if "`loci'" < "`giti'" {
 	                di "updating readraster...."
 	                net install readraster, from(https://raw.github.com/kerrydu/readraster/develop) replace
+				    di
+					*di "The Java dependencies can be updated via:"
+					*di "          geotools_init, compiled"
+				    *di "          netcdf_init,   compiled"
+					cap noi net install readrasterjar, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
+					cap noi net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
 	            }
 	        }
         gettoken loci localversion : localversion, p(".")
         gettoken giti gitversion : gitversion, p(".")		
 	  }
-	    di
-		*di "The Java dependencies can be updated via:"
-		*di "          geotools_init, compiled"
-	    *di "          netcdf_init,   compiled"
-		cap noi net install readrasterjar, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
-		cap noi net install NetCDFUtils.pkg, from("https://raw.githubusercontent.com/kerrydu/readraster/refs/heads/develop/") replace
+
     }
 }
 
