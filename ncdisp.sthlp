@@ -40,6 +40,9 @@ The {cmd:ncdisp} command requires the netcdfAll-5.9.1.jar. Use {cmd:netcdf_init}
 {title:Stored results}
 
 {phang}
+Stored results are only available when viewing a specific variable.
+
+{phang}
 ncdisp stores the following in r():
 
 {phang}
