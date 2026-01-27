@@ -6,10 +6,10 @@ version 17
 cap findfile NetCDFUtils-complete.jar
 if !_rc {
     ncdisp_2 `0'
-    return local varname `varname'
-    return local dimensions `dimensions' 
-    return local coordinates `coordAxes' 
-    return local datatype `datatype'
+    return local varname `r(varname)'
+    return local dimensions `r(dimensions)' 
+    return local coordinates `r(coordAxes)' 
+    return local datatype `r(datatype)'
     exit
 }
 
