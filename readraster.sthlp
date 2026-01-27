@@ -201,7 +201,7 @@ More detailed instruction is available on {browse "https://github.com/kerrydu/re
 {dlgtab:GeoTools Library Setup via JShell with Java source code}
 
 {pstd}
-The GeoTools library (Version 34.0) is required for GeoTIFF file operations including {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:gtiffwrite}, {cmd:gzonalstats}, and {cmd:crsconvert} commands.
+The GeoTools library (Version 34.0) is required for GeoTIFF file operations including {cmd:gtiffdisp}, {cmd:gtiffread}, {cmd:zonalstats}, and {cmd:crsconvert} commands.
 {p_end}
 
 {dlgtab:Automated Setup (Recommended)}
