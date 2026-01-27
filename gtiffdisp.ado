@@ -1,3 +1,4 @@
+*! version 2.0.2 2026-1-27
 *! version 2.0.1 2025-10-05
 cap program drop gtiffdisp
 program define gtiffdisp,rclass
@@ -6,12 +7,11 @@ version 17
 cap findfile readraster-all-1.0.0-fat.jar
 if !_rc {
     gtiffdisp_2 `0'
-    exit
 }
-
-checkdependencies
-gtiffdisp_core `0'
-
+else{
+	checkdependencies
+	gtiffdisp_core `0'
+}
 
 
 return scalar nband = bands
