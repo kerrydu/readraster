@@ -1,4 +1,4 @@
-*! version 3.0.1 2025-10-07
+*! version 3.0.2 2026-1-27
 cap program drop ncdisp
 program define ncdisp,rclass
 version 17
@@ -6,6 +6,10 @@ version 17
 cap findfile NetCDFUtils-complete.jar
 if !_rc {
     ncdisp_2 `0'
+    return local varname `varname'
+    return local dimensions `dimensions' 
+    return local coordinates `coordAxes' 
+    return local datatype `datatype'
     exit
 }
 
