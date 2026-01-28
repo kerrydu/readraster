@@ -1,10 +1,15 @@
 *! version 3.0.1   2025-10-07
 * NetCDF Utilities for processing NetCDF files in Stata
 *
-program define netcdfutils 
+program define netcdfutils, rclass 
     version 17
     java: `0'
-
+    /* di "dimensions: `dimensions'"
+    di "coordAxes: `coordAxes'"
+    di "datatype: `datatype'" */
+    return local dimensions `dimensions'
+    return local coordAxes `coordAxes'
+    return local datatype `datatype'
 end 
 
 java:
@@ -237,24 +242,24 @@ public class NetCDFUtils {
                         .replace("meters", "m");
                     SFIToolkit.display(String.format("%-15s: %s (original: %s)%n", 
                         "Units", unit, unitAtt.getStringValue()));
-                    /* Macro.setLocal("unit", unitAtt.getStringValue()); */
+                    Macro.setLocal("unit", unitAtt.getStringValue());
                 }
         
                 int[] shape = variable.getShape();
                 SFIToolkit.display(String.format("%n%-15s: %s%n", "Shape", Arrays.toString(shape)));
                 SFIToolkit.display(String.format("%-15s: %s%n", "Data Type", variable.getDataType()));
                 
-                Macro.setGlobal("dimensions", Arrays.stream(shape)
+                Macro.setLocal("dimensions", Arrays.stream(shape)
                     .mapToObj(String::valueOf)
                     .collect(Collectors.joining(" ")));
                     
-                Macro.setGlobal("datatype", variable.getDataType().toString());
+                Macro.setLocal("datatype", variable.getDataType().toString());
                 
                 String coordinates = variable.getDimensions().stream()
                     .filter(dim -> isCoordinateAxis(dim, netcdfDataset))
                     .map(Dimension::getShortName)
                     .collect(Collectors.joining(" "));
-                Macro.setGlobal("coordAxes", coordinates);
+                Macro.setLocal("coordAxes", coordinates);
                     
                 SFIToolkit.display(output.toString());
             }
@@ -404,8 +409,8 @@ public class NetCDFUtils {
                 }
             }
             
-            Macro.setGlobal("dimensions", dimSizes.toString());
-            Macro.setGlobal("coordAxes", coordAxesBuilder.toString());
+            Macro.setLocal("dimensions", dimSizes.toString());
+            Macro.setLocal("coordAxes", coordAxesBuilder.toString());
             
             // 验证维度匹配
             if (origin.length != dims.size() || size.length != dims.size()) {

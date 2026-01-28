@@ -5,15 +5,13 @@ version 17
 
 cap findfile NetCDFUtils-complete.jar
 if !_rc {
+    local 00 `0'
     ncdisp_2 `0'
-    local varname `r(varname)'
-    local dimensions `r(dimensions)'
-    local coordAxes `r(coordAxes)'
-    local datatype `r(datatype)'
+    gettoken varname 00 : 00
     return local varname `varname'
-    return local dimensions `dimensions'
-    return local coordinates `coordAxes'
-    return local datatype `datatype'
+    return local dimensions `r(dimensions)' 
+    return local coordinates `r(coordAxes)' 
+    return local datatype `r(datatype)'
     exit
 }
 
@@ -65,13 +63,10 @@ if _rc{
     // javacall NetCDFUtils printVarStructureEntry, jars("NetCDFUtils-complete.jar") args("`file'" "`varname'")
     netcdfutils NetCDFUtils.printVarStructure("`file'","`varname'")
 
-    local dimensions $dimensions
-    local coordAxes $coordAxes
-    local datatype $datatype
     return local varname `varname'
-    return local dimensions `dimensions'
-    return local coordinates `coordAxes'
-    return local datatype `datatype'
+    return local dimensions `r(dimensions)' 
+    return local coordinates `r(coordAxes)' 
+    return local datatype `r(datatype)'
 end
 
 cap program drop ncinfo
@@ -123,10 +118,9 @@ version 17
     javacall NetCDFUtils printVarStructureEntry, jars("NetCDFUtils-complete.jar") args("`file'" "`varname'")
     //netcdfutils NetCDFUtils.printVarStructure("`file'","`varname'")
 
-
     return local varname `varname'
-    return local dimensions `dimensions'
-    return local coordAxes `coordAxes'
+    return local dimensions `dimensions' 
+    return local coordAxes `coordAxes' 
     return local datatype `datatype'
 end
 
