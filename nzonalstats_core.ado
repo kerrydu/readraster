@@ -202,18 +202,24 @@ import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
 
 import org.eclipse.imagen.media.range.Range;
+import org.eclipse.imagen.media.range.RangeFactory;
 import org.eclipse.imagen.media.stats.Statistics;
 import org.eclipse.imagen.media.stats.Statistics.StatsType;
 import org.eclipse.imagen.media.zonal.ZoneGeometry;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateFilter;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.data.collection.ListFeatureCollection;
 
 // GeoTools API imports
 import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.api.feature.type.AttributeDescriptor;
 import org.geotools.api.feature.type.GeometryDescriptor;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.crs.GeographicCRS;
 
 // GeoTools implementation imports
 import org.geotools.coverage.grid.GridCoverage2D;
@@ -562,13 +568,14 @@ public class nzonalstatics {
                 }
             }
 
-            // Identify spatial dimensions
-            for (int i = 0; i < actualDims; i++) {
-                if (actualShape[i] > 1) {
-                    spatialDims.add(i);
-                }
-            }
+            boolean hasFill = (fillAttr != null);
+            float validMin = Float.NaN;
+            float validMax = Float.NaN;
 
+            // Spatial dimensions were already identified once above (spatialDims built at
+            // the top of this method). Re-deriving yDim/xDim here from that single list --
+            // do NOT add to the list again, or the last-two-element lookup would grab the
+            // wrong indices for non-(time,y,x) dimension orderings.
             if (spatialDims.size() < 2) {
                 System.out.println("Error: Need at least 2 spatial dimensions with size > 1");
                 return;
@@ -590,6 +597,7 @@ public class nzonalstatics {
             }
 
             // Iterate over all spatial positions
+            int missingCellCount = 0;
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     // Set the indices for the spatial dimensions
@@ -606,13 +614,18 @@ public class nzonalstatics {
                         if (!Double.isNaN(fillValueDouble)) {
                             isMissing = Double.compare(dval, fillValueDouble) == 0;
                         }
-                        if (!isMissing && fillAttr == null && Double.isNaN(dval)) {
+                        if (!isMissing && Double.isNaN(dval)) {
                             isMissing = true;
                         }
                         if (isMissing) {
-                            value = Float.NaN;
+                            missingCellCount++;
+                            // Keep the real fill value so it can be registered as NoData
+                            // (a single NaN would otherwise poison the whole zone's stats).
+                            value = hasFill ? fillValueFloat : Float.NaN;
                         } else {
                             value = (float) dval;
+                            if (Float.isNaN(validMin) || value < validMin) validMin = value;
+                            if (Float.isNaN(validMax) || value > validMax) validMax = value;
                         }
                     } else {
                         float fval = dataArray.getFloat(index);
@@ -620,19 +633,77 @@ public class nzonalstatics {
                         if (!Float.isNaN(fillValueFloat)) {
                             isMissing = Float.compare(fval, fillValueFloat) == 0;
                         }
-                        if (!isMissing && fillAttr == null && Float.isNaN(fval)) {
+                        if (!isMissing && Float.isNaN(fval)) {
                             isMissing = true;
                         }
                         if (isMissing) {
-                            value = Float.NaN;
+                            missingCellCount++;
+                            // Keep the real fill value so it can be registered as NoData
+                            // (a single NaN would otherwise poison the whole zone's stats).
+                            value = hasFill ? fillValueFloat : Float.NaN;
                         } else {
                             value = fval;
+                            if (Float.isNaN(validMin) || value < validMin) validMin = value;
+                            if (Float.isNaN(validMax) || value > validMax) validMax = value;
                         }
                     }
                     gridData[y][x] = value;
                 }
             }
 
+            // Determine the NoData value used for zonal statistics.
+            // - If the NetCDF has a _FillValue, keep that real value (it is by design far
+            //   outside the valid range) and register it as NoData.
+            // - If missing is encoded as NaN (no _FillValue), substitute a sentinel value
+            //   that is strictly below the valid minimum, so it can be cleanly excluded.
+            // Either way, registering NoData lets GeoTools/JAI compute stats over VALID
+            // pixels only, instead of turning an entire zone into NaN.
+            double noDataForStats = Double.NaN;
+            if (hasFill && !Float.isNaN(fillValueFloat)) {
+                // A real _FillValue is present: missing cells already hold that real value
+                // (NaN cells were also mapped to it in the loop above), so just exclude it.
+                noDataForStats = (double) fillValueFloat;
+            } else if (!Float.isNaN(validMin) && !Float.isNaN(validMax)) {
+                // No usable _FillValue (absent, or defined as NaN): derive a sentinel value
+                // strictly below the valid range and substitute it for any NaN cells, then
+                // register the sentinel as NoData.
+                float sentinel = validMin - (Math.abs(validMax - validMin) + 100.0f);
+                for (int yy = 0; yy < height; yy++) {
+                    for (int xx = 0; xx < width; xx++) {
+                        if (Float.isNaN(gridData[yy][xx])) {
+                            gridData[yy][xx] = sentinel;
+                        }
+                    }
+                }
+                noDataForStats = (double) sentinel;
+            }
+            // Build the NoData range via the PUBLIC RangeFactory. The concrete RangeDouble
+            // constructor is package-private, so it cannot be called from here -- RangeFactory
+            // is the supported public API. A single-valued range [v, v] tells JAI to skip those
+            // pixels when computing stats, so one missing cell no longer zeroes out a whole zone.
+            Range noDataRange = Double.isNaN(noDataForStats)
+                    ? null
+                    : RangeFactory.create(noDataForStats, true, noDataForStats, true);
+
+            // >>> DIAGNOSTIC: report how missing values were handled for the whole raster
+            int nanRemaining = 0;
+            for (int yy = 0; yy < height; yy++) {
+                for (int xx = 0; xx < width; xx++) {
+                    if (Float.isNaN(gridData[yy][xx])) nanRemaining++;
+                }
+            }
+            System.out.println("[NoData diagnostic] hasFill=" + hasFill
+                    + " fillValue=" + (Float.isNaN(fillValueFloat) ? "NaN" : fillValueFloat)
+                    + " missingCellsInRaster=" + missingCellCount
+                    + " nanRemainingAfterFix=" + nanRemaining
+                    + " validMin=" + validMin + " validMax=" + validMax
+                    + " noDataForStats=" + (Double.isNaN(noDataForStats) ? "NONE" : noDataForStats)
+                    + " noDataRange=" + (noDataRange == null ? "NULL (no masking!)" : "set"));
+            if (nanRemaining > 0 && noDataRange == null) {
+                System.out.println("[NoData diagnostic] WARNING: raster still holds " + nanRemaining
+                        + " NaN cell(s) but no NoData range was set -> these will poison zone stats. "
+                        + "Define a _FillValue or ensure validMin/validMax are non-NaN.");
+            }
 
             // Create GridCoverage2D
             GridCoverageFactory factory = new GridCoverageFactory();
@@ -661,6 +732,45 @@ public class nzonalstatics {
             } else {
                 System.out.println("Coordinate systems are compatible, no reprojection needed");
             }
+
+            // >>> ADDED: reconcile 0-360 vs -180-180 longitude convention mismatch
+            // Both datasets may be EPSG:4326 but one uses [0,360] and the other [-180,180];
+            // the CRS is identical so reprojection is skipped, yet the geometries never overlap.
+            ReferencedEnvelope reprojShpBounds = featureCollection.getBounds();
+            if (isGeographic(rasterCRS)) {
+                double rMin = actualEnvelope.getMinX();
+                double rMax = actualEnvelope.getMaxX();
+                double sMin = reprojShpBounds.getMinX();
+                double sMax = reprojShpBounds.getMaxX();
+                // Detect longitude-convention mismatch (0-360 vs -180-180).
+                // The two conventions overlap in [0,180], so a plain "do the extents intersect?"
+                // test is NOT enough -- the same geographic point has X values that differ by 360.
+                boolean raster0360 = (rMin >= 0 && rMax > 180);
+                boolean vec0360    = (sMin >= 0 && sMax > 180);
+                if (raster0360 != vec0360) {
+                    System.out.println("Longitude convention mismatch (raster is "
+                            + (raster0360 ? "0-360" : "-180-180") + ", shapefile is "
+                            + (vec0360 ? "0-360" : "-180-180")
+                            + ") detected; aligning shapefile longitudes to the raster's convention.");
+                    featureCollection = alignLongitudeConvention(featureCollection, raster0360);
+                    reprojShpBounds = featureCollection.getBounds();
+                }
+            }
+
+            // >>> overall extent overlap check (both envelopes now in rasterCRS)
+            if (!actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) reprojShpBounds)) {
+                System.out.println("Warning: The shapefile extent does NOT overlap the NetCDF raster extent.");
+                System.out.println("  Shapefile bounds: " + reprojShpBounds.toString());
+                System.out.println("  NetCDF bounds:   " + actualEnvelope.toString());
+                System.out.println("  No zone will contain valid raster pixels; zonal statistics will be empty.");
+                System.out.println("  Please verify the CRS and the spatial coverage of both datasets.");
+            }
+
+            // >>> DIAGNOSTIC: report raster vs shapefile extents (both in rasterCRS) for overlap
+            System.out.println("[Extent diagnostic] rasterEnvelope =" + actualEnvelope.toString());
+            System.out.println("[Extent diagnostic] shapeEnvelope  =" + reprojShpBounds.toString());
+            System.out.println("[Extent diagnostic] overallOverlap ="
+                    + actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) reprojShpBounds));
 
 
             // Materialize shapefile features for repeated use, keep only polygonal geometries
@@ -762,7 +872,7 @@ public class nzonalstatics {
                     bands,
                     zoneFeatures,
                     null,
-                    null,
+                    noDataRange,
                     null,
                     false,
                     null,
@@ -779,6 +889,8 @@ public class nzonalstatics {
 
             int totalFeatures = zoneFeatures.size();
             Data.setObsTotal(totalFeatures);
+            // >>> ADDED: counter for zones that do not overlap the raster
+            int noOverlapCount = 0;
 
             Map<String, Integer> attributeNameMap = new HashMap<>();
             List<String> idAttrNames = new ArrayList<>();
@@ -887,21 +999,32 @@ public class nzonalstatics {
                 ZoneGeometry zoneGeometry = i < zoneGeometries.size() ? zoneGeometries.get(i) : null;
                 Statistics[] stats = extractStatisticsForZone(zoneGeometry, 0);
                 if (stats == null || stats.length == 0) {
+                    // >>> ADDED: zone has no overlapping raster pixels at all
+                    noOverlapCount++;
+                    System.out.println("Warning: Zone " + (i + 1) + " (" + feature.getID() + ") has no overlapping raster pixels; statistics skipped.");
                     continue;
                 }
 
-                if (countAttrName != null) {
-                    Number sampleCount = stats[0].getNumSamples();
-                    if (sampleCount != null) {
-                        Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, sampleCount.doubleValue());
-                    }
+                // >>> ADDED: detect zones whose valid sample count is 0
+                Number sampleCountObj = stats[0].getNumSamples();
+                int sampleCountVal = (sampleCountObj != null) ? sampleCountObj.intValue() : 0;
+                if (sampleCountVal == 0) {
+                    noOverlapCount++;
+                    System.out.println("Warning: Zone " + (i + 1) + " (" + feature.getID() + ") has 0 valid raster pixels; statistics set to missing.");
                 }
 
+                if (countAttrName != null) {
+                    Data.storeNumFast(attributeNameMap.get(countAttrName), stataObs, (double) sampleCountVal);
+                }
+
+                Double zoneProbe = null;
                 if (avgAttrName != null) {
-                    Double avgValue = getStatValue(stats, statsIndexMap, StatsType.MEAN);
-                    if (avgValue != null) {
-                        Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, avgValue);
+                    zoneProbe = getStatValue(stats, statsIndexMap, StatsType.MEAN);
+                    if (zoneProbe != null) {
+                        Data.storeNumFast(attributeNameMap.get(avgAttrName), stataObs, zoneProbe);
                     }
+                } else if (minAttrName != null) {
+                    zoneProbe = getStatValue(stats, statsIndexMap, StatsType.MIN);
                 }
 
                 if (minAttrName != null) {
@@ -931,6 +1054,28 @@ public class nzonalstatics {
                         Data.storeNumFast(attributeNameMap.get(sumAttrName), stataObs, sumValue);
                     }
                 }
+
+                // >>> DIAGNOSTIC: explain why a zone's statistics are missing
+                boolean zoneMissing = (zoneProbe == null || zoneProbe.isNaN());
+                if (zoneMissing) {
+                    String reason;
+                    if (sampleCountVal == 0) {
+                        reason = "0 valid pixels overlap this zone -> geometry/CRS or 0-360 vs -180-180 "
+                                + "longitude-convention mismatch, or the zone lies outside the raster extent. "
+                                + "Check the [Extent diagnostic] lines above.";
+                    } else {
+                        reason = "zone HAS " + sampleCountVal + " valid pixels but avg/min is still NaN/missing -> "
+                                + "NoData masking is NOT taking effect (missing values leaked into the stat). "
+                                + "Check the [NoData diagnostic] line above: noDataRange must read 'set', not 'NULL'.";
+                    }
+                    System.out.println("Missing zone #" + (i + 1) + " (" + feature.getID() + "): " + reason);
+                }
+            }
+
+            // >>> ADDED: summary of non-overlapping zones
+            if (noOverlapCount > 0) {
+                System.out.println("Warning: " + noOverlapCount + " of " + totalFeatures + " zone(s) did not overlap the raster or had 0 valid pixels.");
+                System.out.println("  These zones have no statistics (or count = 0). Check their location against the raster extent.");
             }
 
             Data.updateModified();
@@ -1132,6 +1277,66 @@ public class nzonalstatics {
             return ((Number) result).doubleValue();
         }
         return null;
+    }
+
+    /**
+     * Returns true if the CRS is geographic (longitude/latitude, degrees).
+     * Used to decide whether the 0-360 vs -180-180 longitude convention fix applies.
+     */
+    private static boolean isGeographic(CoordinateReferenceSystem crs) {
+        return crs instanceof GeographicCRS;
+    }
+
+    /**
+     * Shift all geometries in the collection by a constant longitude offset (degrees).
+     * Resolves the 0-360 vs -180-180 longitude convention mismatch when both datasets
+     * share the same geographic CRS but different longitude ranges.
+     */
+    private static SimpleFeatureCollection alignLongitudeConvention(SimpleFeatureCollection fc, final boolean raster0360) {
+        try {
+            ListFeatureCollection result = new ListFeatureCollection(fc.getSchema());
+            SimpleFeatureIterator it = fc.features();
+            try {
+                while (it.hasNext()) {
+                    SimpleFeature f = it.next();
+                    SimpleFeature f2 = SimpleFeatureBuilder.copy(f);
+                    Object geomObj = f2.getDefaultGeometry();
+                    if (geomObj instanceof Geometry) {
+                        Geometry g = (Geometry) ((Geometry) geomObj).clone();
+                        g.apply(new CoordinateFilter() {
+                            @Override
+                            public void filter(Coordinate coord) {
+                                // Bring the coordinate into the raster's longitude convention.
+                                if (raster0360) {
+                                    // raster uses 0-360: map negatives into [0,360)
+                                    if (coord.x < 0) {
+                                        coord.x += 360.0;
+                                    } else if (coord.x >= 360.0) {
+                                        coord.x -= 360.0;
+                                    }
+                                } else {
+                                    // raster uses -180-180: map values >180 into (-180,180]
+                                    if (coord.x > 180.0) {
+                                        coord.x -= 360.0;
+                                    } else if (coord.x <= -180.0) {
+                                        coord.x += 360.0;
+                                    }
+                                }
+                            }
+                        });
+                        g.geometryChanged();
+                        f2.setDefaultGeometry(g);
+                    }
+                    result.add(f2);
+                }
+            } finally {
+                it.close();
+            }
+            return result;
+        } catch (Exception e) {
+            System.out.println("Warning: failed to align shapefile longitudes: " + e.getMessage());
+            return fc;
+        }
     }
 }
 
