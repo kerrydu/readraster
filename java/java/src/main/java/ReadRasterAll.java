@@ -1466,8 +1466,8 @@ public class ReadRasterAll {
                 if (endCol == -1) endCol = rasterWidth - 1;
                 validateCoordinates(raster, startRow, endRow, startCol, endCol);
                 validateBand(coverage, raster, bandIndex - 1);
-                int subsetWidth = endCol - startCol;
-                int subsetHeight = endRow - startRow;
+                int subsetWidth = endCol - startCol + 1;
+                int subsetHeight = endRow - startRow + 1;
                 Raster subRaster = raster.createChild(startCol, startRow, subsetWidth, subsetHeight, 0, 0, null);
                 long totalObs = calculateTotalObs(0, subsetHeight - 1, 0, subsetWidth - 1);
                 if (totalObs > MAX_OBS) { SFIToolkit.errorln("Reading too many observations"); return; }
@@ -1519,6 +1519,9 @@ public class ReadRasterAll {
             int maxCol = raster.getWidth() - 1;
             if (startRow > maxRow) { SFIToolkit.errorln("Starting Coordinates are out of range: startRow>" + maxRow); }
             if (startCol > maxCol) { SFIToolkit.errorln("Starting Coordinates are out of range: startCol>" + maxCol); }
+            if (endRow < startRow || endCol < startCol) {
+                throw new IllegalArgumentException(String.format("Invalid subset bounds: endRow (%d) must be >= startRow (%d), and endCol (%d) must be >= startCol (%d).", endRow, startRow, endCol, startCol));
+            }
             if (endRow > maxRow || endCol > maxCol) {
                 SFIToolkit.errorln("Ending Coordinates are out of range");
                 SFIToolkit.errorln("Maximum range: " + raster.getHeight() + "x" + raster.getWidth());
