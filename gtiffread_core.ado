@@ -77,8 +77,8 @@ else {
     else {
         local endRow: word 1 of `size'
         local endCol: word 2 of `size'
-        local endRow = `endRow' + `startRow'
-        local endCol = `endCol' + `startCol'
+        local endRow = `endRow' + `startRow' - 1
+        local endCol = `endCol' + `startCol' - 1
     }
 
     java: GeoTiff.exportToStata("`using'", `band', "`crscode'", `startRow', `endRow', `startCol', `endCol')
@@ -182,8 +182,8 @@ public class GeoTiff {
             validateBand(coverage, raster, bandIndex - 1);
 
             // Calculate the subset bounds
-            int subsetWidth = endCol - startCol ;
-            int subsetHeight = endRow - startRow ;
+            int subsetWidth = endCol - startCol + 1;
+            int subsetHeight = endRow - startRow + 1;
 
             // Create a sub-raster for the specified bounds
             Raster subRaster = raster.createChild(
