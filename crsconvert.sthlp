@@ -43,7 +43,7 @@ Run {cmd:netcdf_init} to configure the netCDF-Java library path (pointing to net
 
 
 {phang}
-{opt gen(prefix_)} specifies the prefix for the two new variables that will contain the transformed coordinates. The new variables will be named {it:prefix_}x and {it:prefix_}y.
+{opt gen(prefix_)} specifies the text prepended to each input coordinate variable name when creating transformed coordinates. The new variables will be named {it:prefix_}{it:var1} and {it:prefix_}{it:var2}, where {it:var1} and {it:var2} are the two variables in {it:varlist}. For example, with {it:varlist} = {_X _Y} and {cmd:gen(alber_)}, the new variables are {cmd:alber__X} and {cmd:alber__Y}.
 
 {phang}
 {opt from(string)} specifies the source coordinate reference system. It can be provided in EPSG format (e.g., "EPSG:4326") or as a WKT string. 
@@ -87,4 +87,3 @@ Alternatively, users can specify a GeoTIFF (.tif/.tiff), Shapefile (.shp), or Ne
 {psee}
 Online:  {help geotools_init}, {help netcdf_init}, {help gtiffread}, {help ncread}
 {p_end}
-
