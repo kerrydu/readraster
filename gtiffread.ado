@@ -129,8 +129,8 @@ else {
     else {
         local endRow: word 1 of `size'
         local endCol: word 2 of `size'
-        local endRow = `endRow' + `startRow'
-        local endCol = `endCol' + `startCol'
+        local endRow = `endRow' + `startRow' - 1
+        local endCol = `endCol' + `startCol' - 1
     }
 }
 
@@ -156,4 +156,3 @@ program define removequotes,rclass
     syntax, file(string) 
     return local file `file'
 end
-
