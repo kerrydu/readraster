@@ -129,8 +129,12 @@ else {
     else {
         local endRow: word 1 of `size'
         local endCol: word 2 of `size'
-        local endRow = `endRow' + `startRow' - 1
-        local endCol = `endCol' + `startCol' - 1
+        if `endRow' != -1 {
+            local endRow = `endRow' + `startRow' - 1
+        }
+        if `endCol' != -1 {
+            local endCol = `endCol' + `startCol' - 1
+        }
     }
 }
 
