@@ -996,19 +996,7 @@ public class ReadRasterAll {
                     flat[y * width + x] = data[height - 1 - y][x];
                 }
             }
-            DataBuffer db = new DataBufferFloat(flat, flat.length);
-            int bands = 1;
-            int[] bandOffsets = {0};
-            SampleModel sm = new PixelInterleavedSampleModel(DataBuffer.TYPE_FLOAT, width, height, bands, width * bands, bandOffsets);
-            WritableRaster raster = Raster.createWritableRaster(sm, db, null);
-            ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_GRAY);
-            boolean hasAlpha = false;
-            boolean isAlphaPremultiplied = false;
-            int transparency = Transparency.OPAQUE;
-            int transferType = DataBuffer.TYPE_FLOAT;
-            int[] nBits = {32};
-            ColorModel cm = new ComponentColorModel(cs, nBits, hasAlpha, isAlphaPremultiplied, transparency, transferType);
-            return new BufferedImage(cm, raster, false, null);
+            return newGrayFloatImage(flat, width, height);
         }
 
         public void run(String shpPath, String ncPath, String varName, String statsParam,
@@ -1973,24 +1961,28 @@ public class ReadRasterAll {
     }
 
     /**
-     * Copy a coverage into one {@link BufferedImage} tile at (0, 0).
-     * {@code ZonalStatsOpImage.computeTile} loads {@code getSourceImage(0)} with the same tile
-     * index it is computing, then calls {@code Raster.getBounds} on the result.
-     * {@code OpImage.getTile} returns null when that index is outside the source tile grid.
-     * The zonal operation copies its tile grid from this image, so a stripped GeoTIFF (one row
-     * per strip) or a cropped read whose tile origin is not (0, 0) has to be collapsed first.
-     * Whether the current tiles happen to be readable is irrelevant: leaving that grid in place
-     * is what makes a later index miss. Pixels from a null tile are filled with the coverage
-     * no-data value, or NaN.
+     * Build the same kind of coverage the NetCDF path hands to {@code RasterZonalStatistics2}:
+     * one {@link BufferedImage} tile at (0, 0), not the file's strip grid.
+     *
+     * <p>{@code ZonalStatsOpImage.computeTile} does {@code getSourceImage(0).getTile(tileX, tileY)}
+     * and then {@code tile.getBounds()}. Source 0 is the data coverage's rendered image.
+     * {@code RasterZonalStatistics2} wraps {@code GridCoverage2DRIA} and {@code NullDescriptor}
+     * only around a non-null classifier, and stores that chain in the classifier parameter.
+     * Both callers pass a null classifier, so that chain is not created and is not source 0.
+     *
+     * <p>Pixels are read with {@link RenderedImage#getData()} into a {@code float[]} and wrapped
+     * the same way as {@code floatArrayToImage}. The original grid-to-CRS is kept (plus a
+     * translation when the file image origin is not (0, 0)); the envelope overload would
+     * re-decide axis order.
      */
     static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
         RenderedImage src = coverage.getRenderedImage();
         if (src == null) return coverage;
-        SFIToolkit.displayln("GeoTIFF zonal source is " + src.getNumXTiles() + "x" + src.getNumYTiles()
+        SFIToolkit.displayln("GeoTIFF zonal source is " + src.getClass().getName()
+                + " " + src.getNumXTiles() + "x" + src.getNumYTiles()
                 + " tiles of " + src.getTileWidth() + "x" + src.getTileHeight()
                 + " at tile (" + src.getMinTileX() + "," + src.getMinTileY()
-                + "), pixel origin (" + src.getMinX() + "," + src.getMinY()
-                + "); materializing one in-memory tile");
+                + "), pixel origin (" + src.getMinX() + "," + src.getMinY() + ")");
         double fill = Double.NaN;
         try {
             double[] nodata = coverage.getSampleDimension(0).getNoDataValues();
@@ -1999,7 +1991,7 @@ public class ReadRasterAll {
             fill = Double.NaN;
         }
         int[] nullTiles = new int[1];
-        BufferedImage image = rasterWithoutNullTiles(src, fill, nullTiles);
+        BufferedImage image = singleTileFloatImage(src, fill, nullTiles);
         if (nullTiles[0] > 0) {
             SFIToolkit.displayln("GeoTIFF returned " + nullTiles[0]
                     + " empty tile(s); materialized an in-memory raster so zonal statistics can run");
@@ -2020,14 +2012,69 @@ public class ReadRasterAll {
                     AffineTransform.getTranslateInstance(src.getMinX(), src.getMinY()));
             gridToCrs = ConcatenatedTransform.create(shift, gridToCrs);
         }
-        return new GridCoverageFactory().create(
+        GridCoverage2D created = new GridCoverageFactory().create(
                 coverage.getName().toString(),
                 image,
                 coverage.getCoordinateReferenceSystem(),
                 gridToCrs,
-                coverage.getSampleDimensions(),
+                null,
                 null,
                 props.isEmpty() ? null : props);
+        RenderedImage out = created.getRenderedImage();
+        Raster check = null;
+        try {
+            check = out.getTile(out.getMinTileX(), out.getMinTileY());
+        } catch (RuntimeException ignore) {
+            check = null;
+        }
+        SFIToolkit.displayln("GeoTIFF zonal image passed to RasterZonalStatistics2 is " + out.getClass().getName()
+                + " tiles " + out.getNumXTiles() + "x" + out.getNumYTiles()
+                + " at (" + out.getMinTileX() + "," + out.getMinTileY() + ")"
+                + " getTile=" + (check == null ? "null" : "present"));
+        return created;
+    }
+
+    /**
+     * One-band images become a float {@link BufferedImage}, matching the NetCDF path.
+     * {@code getData} reads the cropped window without using the strip index that
+     * {@code computeTile} later mishandles. If that read fails, empty tiles are filled
+     * and the same float image is built from the filled raster.
+     */
+    private static BufferedImage singleTileFloatImage(RenderedImage src, double fill, int[] nullTiles) {
+        if (src.getSampleModel().getNumBands() != 1) {
+            return rasterWithoutNullTiles(src, fill, nullTiles);
+        }
+        try {
+            Raster data = src.getData();
+            int width = data.getWidth();
+            int height = data.getHeight();
+            float[] flat = new float[width * height];
+            data.getSamples(data.getMinX(), data.getMinY(), width, height, 0, flat);
+            return newGrayFloatImage(flat, width, height);
+        } catch (RuntimeException | OutOfMemoryError ex) {
+            SFIToolkit.displayln("GeoTIFF getData failed (" + ex.getClass().getSimpleName()
+                    + ": " + ex.getMessage() + "); filling empty tiles before zonal statistics");
+            BufferedImage filled = rasterWithoutNullTiles(src, fill, nullTiles);
+            Raster data = filled.getRaster();
+            float[] flat = new float[data.getWidth() * data.getHeight()];
+            data.getSamples(0, 0, data.getWidth(), data.getHeight(), 0, flat);
+            return newGrayFloatImage(flat, data.getWidth(), data.getHeight());
+        }
+    }
+
+    static BufferedImage newGrayFloatImage(float[] rowMajor, int width, int height) {
+        DataBuffer db = new DataBufferFloat(rowMajor, rowMajor.length);
+        SampleModel sm = new PixelInterleavedSampleModel(
+                DataBuffer.TYPE_FLOAT, width, height, 1, width, new int[] {0});
+        WritableRaster raster = Raster.createWritableRaster(sm, db, null);
+        ColorModel cm = new ComponentColorModel(
+                ColorSpace.getInstance(ColorSpace.CS_GRAY),
+                new int[] {32},
+                false,
+                false,
+                Transparency.OPAQUE,
+                DataBuffer.TYPE_FLOAT);
+        return new BufferedImage(cm, raster, false, null);
     }
 
     static BufferedImage rasterWithoutNullTiles(RenderedImage src, double fillValue) {
