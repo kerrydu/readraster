@@ -1977,15 +1977,13 @@ public class ReadRasterAll {
      * {@link RenderedImage#getTile}, and {@code ZonalStatsOpImage.computeTile} throws when that happens.
      * Pixels that belonged to a null tile are filled with the coverage no-data value (or NaN).
      */
-    private static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
+    static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
         RenderedImage src = coverage.getRenderedImage();
         if (src == null) return coverage;
-        // A single in-memory tile never returns null from getTile. GeoTIFF reads are
-        // tiled ImageRead ops: ZonalStatsOpImage.computeTile calls getTile and NPEs
-        // ("tile is null") on empty or not-yet-realized tiles. Copy first.
-        if (src instanceof BufferedImage
-                && src.getMinX() == 0 && src.getMinY() == 0
-                && src.getNumXTiles() == 1 && src.getNumYTiles() == 1) {
+        // Layout is not evidence that getTile works. A one-tile BufferedImage at (0, 0)
+        // can still return null (or throw) from getTile, and ZonalStatsOpImage.computeTile
+        // then NPEs on tile.getBounds(). Skip the copy only after every tile is readable.
+        if (allTilesReadable(src)) {
             return coverage;
         }
         double fill = Double.NaN;
@@ -2067,10 +2065,29 @@ public class ReadRasterAll {
         return new BufferedImage(fallback, dest, false, null);
     }
 
+    /**
+     * False when any tile is missing. {@code getTile} returning null and {@code getTile}
+     * throwing are the same failure for zonal statistics, so both force a copy.
+     */
+    static boolean allTilesReadable(RenderedImage img) {
+        int minTX = img.getMinTileX();
+        int minTY = img.getMinTileY();
+        int numX = img.getNumXTiles();
+        int numY = img.getNumYTiles();
+        for (int ty = 0; ty < numY; ty++) {
+            for (int tx = 0; tx < numX; tx++) {
+                if (readTileOrNull(img, minTX + tx, minTY + ty) == null) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private static Raster readTileOrNull(RenderedImage src, int tileX, int tileY) {
         try {
             return src.getTile(tileX, tileY);
-        } catch (NullPointerException ex) {
+        } catch (RuntimeException ex) {
             return null;
         }
     }
