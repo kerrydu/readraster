@@ -766,8 +766,8 @@ public class ReadRasterAll {
                 org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
                 int[] bands = new int[] {bandIndex};
 
-                // Tiled GeoTIFFs can return a null Raster for empty tiles. ZonalStatsOpImage.computeTile
-                // dereferences that raster immediately, so materialize a single in-memory image first.
+                // ZonalStatsOpImage.computeTile uses its own tile index on the source and NPEs
+                // when that getTile is null. Collapse the (possibly stripped) read first.
                 coverage = materializeNullSafeCoverage(coverage);
 
                 org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
@@ -1973,19 +1973,24 @@ public class ReadRasterAll {
     }
 
     /**
-     * Copy a coverage into one in-memory tile. Empty GeoTIFF tiles come back as null from
-     * {@link RenderedImage#getTile}, and {@code ZonalStatsOpImage.computeTile} throws when that happens.
-     * Pixels that belonged to a null tile are filled with the coverage no-data value (or NaN).
+     * Copy a coverage into one {@link BufferedImage} tile at (0, 0).
+     * {@code ZonalStatsOpImage.computeTile} loads {@code getSourceImage(0)} with the same tile
+     * index it is computing, then calls {@code Raster.getBounds} on the result.
+     * {@code OpImage.getTile} returns null when that index is outside the source tile grid.
+     * The zonal operation copies its tile grid from this image, so a stripped GeoTIFF (one row
+     * per strip) or a cropped read whose tile origin is not (0, 0) has to be collapsed first.
+     * Whether the current tiles happen to be readable is irrelevant: leaving that grid in place
+     * is what makes a later index miss. Pixels from a null tile are filled with the coverage
+     * no-data value, or NaN.
      */
     static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
         RenderedImage src = coverage.getRenderedImage();
         if (src == null) return coverage;
-        // Layout is not evidence that getTile works. A one-tile BufferedImage at (0, 0)
-        // can still return null (or throw) from getTile, and ZonalStatsOpImage.computeTile
-        // then NPEs on tile.getBounds(). Skip the copy only after every tile is readable.
-        if (allTilesReadable(src)) {
-            return coverage;
-        }
+        SFIToolkit.displayln("GeoTIFF zonal source is " + src.getNumXTiles() + "x" + src.getNumYTiles()
+                + " tiles of " + src.getTileWidth() + "x" + src.getTileHeight()
+                + " at tile (" + src.getMinTileX() + "," + src.getMinTileY()
+                + "), pixel origin (" + src.getMinX() + "," + src.getMinY()
+                + "); materializing one in-memory tile");
         double fill = Double.NaN;
         try {
             double[] nodata = coverage.getSampleDimension(0).getNoDataValues();
@@ -2063,25 +2068,6 @@ public class ReadRasterAll {
             throw new IllegalArgumentException("Cannot build an in-memory image for data type " + dataType + " with " + bands + " bands");
         }
         return new BufferedImage(fallback, dest, false, null);
-    }
-
-    /**
-     * False when any tile is missing. {@code getTile} returning null and {@code getTile}
-     * throwing are the same failure for zonal statistics, so both force a copy.
-     */
-    static boolean allTilesReadable(RenderedImage img) {
-        int minTX = img.getMinTileX();
-        int minTY = img.getMinTileY();
-        int numX = img.getNumXTiles();
-        int numY = img.getNumYTiles();
-        for (int ty = 0; ty < numY; ty++) {
-            for (int tx = 0; tx < numX; tx++) {
-                if (readTileOrNull(img, minTX + tx, minTY + ty) == null) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     private static Raster readTileOrNull(RenderedImage src, int tileX, int tileY) {
