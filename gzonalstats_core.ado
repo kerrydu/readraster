@@ -160,6 +160,9 @@ import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.api.feature.type.AttributeDescriptor;
 import org.geotools.api.feature.type.GeometryDescriptor;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.datum.PixelInCell;
+import org.geotools.api.referencing.operation.MathTransform;
+import org.geotools.api.geometry.Position;
 import org.geotools.api.coverage.grid.GridEnvelope;
 
 // GeoTools implementation imports
@@ -174,6 +177,7 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.store.ReprojectingFeatureCollection;
 import org.geotools.gce.geotiff.GeoTiffReader;
+import org.geotools.geometry.Position2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.raster.RasterZonalStatistics2;
 import org.geotools.referencing.CRS;
@@ -331,7 +335,7 @@ public class zonalstatics {
                 
                 try {
                     // Get the raster extent first to ensure we don't request outside its bounds
-                    GridEnvelope gridRange = reader.getOriginalGridRange();
+                    GridEnvelope originalRange = reader.getOriginalGridRange();
                     ReferencedEnvelope rasterEnvelope = new ReferencedEnvelope(
                         reader.getOriginalEnvelope());
                     
@@ -353,26 +357,45 @@ public class zonalstatics {
                         // Use null parameters to read the entire raster since there's no overlap
                     } else {
                         System.out.println("Using intersection bounds: " + intersection);
-                        
-                        // Read only the minimal area needed
-                        GridCoverage2D fullGridCov = reader.read((org.geotools.api.parameter.GeneralParameterValue[]) null);
-                        GridGeometry2D originalGeometry = fullGridCov.getGridGeometry();
-                        
+
+                        // Convert the intersection (world coordinates) into a pixel window so the
+                        // reader only decodes the required rows/columns instead of the full raster.
+                        MathTransform gridToWorld = reader.getOriginalGridToWorld(PixelInCell.CELL_CENTER);
+                        MathTransform worldToGrid = gridToWorld.inverse();
+                        Position ll = worldToGrid.transform(
+                                new Position2D(intersection.getMinX(), intersection.getMinY()), null);
+                        Position ur = worldToGrid.transform(
+                                new Position2D(intersection.getMaxX(), intersection.getMaxY()), null);
+
+                        int gx0 = (int) Math.floor(Math.min(ll.getOrdinate(0), ur.getOrdinate(0)));
+                        int gx1 = (int) Math.ceil(Math.max(ll.getOrdinate(0), ur.getOrdinate(0)));
+                        int gy0 = (int) Math.floor(Math.min(ll.getOrdinate(1), ur.getOrdinate(1)));
+                        int gy1 = (int) Math.ceil(Math.max(ll.getOrdinate(1), ur.getOrdinate(1)));
+
+                        // Clamp to the actual raster grid range so we never request out-of-bounds pixels
+                        gx0 = Math.max(gx0, originalRange.getLow(0));
+                        gy0 = Math.max(gy0, originalRange.getLow(1));
+                        gx1 = Math.min(gx1, originalRange.getHigh(0));
+                        gy1 = Math.min(gy1, originalRange.getHigh(1));
+
+                        int gw = Math.max(1, gx1 - gx0 + 1);
+                        int gh = Math.max(1, gy1 - gy0 + 1);
+
                         // Create the parameter for limiting the read area
                         final ParameterValue<GridGeometry2D> gg = AbstractGridFormat.READ_GRIDGEOMETRY2D.createValue();
-                        
-                        // Create a grid geometry using the intersection of bounds
+
+                        // Create a grid geometry using the reduced pixel window, not the full grid range
+                        GridEnvelope2D pixelRange = new GridEnvelope2D(gx0, gy0, gw, gh);
                         GridGeometry2D simpleGeometry = new GridGeometry2D(
-                            originalGeometry.getGridRange(),
-                            originalGeometry.getGridToCRS(),
-                            intersection.getCoordinateReferenceSystem()
+                            pixelRange,
+                            PixelInCell.CELL_CENTER,
+                            gridToWorld,
+                            rasterCRS,
+                            null
                         );
                         
                         gg.setValue(simpleGeometry);
                         readParams = new GeneralParameterValue[] { gg };
-                        
-                        // Dispose of the temporary full coverage as we only needed its geometry
-                        fullGridCov.dispose(true);
                         
                         System.out.println("Successfully created optimized read parameters");
                     }
