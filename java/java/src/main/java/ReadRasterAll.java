@@ -766,8 +766,8 @@ public class ReadRasterAll {
                 org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
                 int[] bands = new int[] {bandIndex};
 
-                // Tiled GeoTIFFs can return a null Raster for empty tiles. ZonalStatsOpImage.computeTile
-                // dereferences that raster immediately, so materialize a single in-memory image first.
+                // ZonalStatsOpImage.computeTile uses its own tile index on the source and NPEs
+                // when that getTile is null. Collapse the (possibly stripped) read first.
                 coverage = materializeNullSafeCoverage(coverage);
 
                 org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
@@ -1973,21 +1973,24 @@ public class ReadRasterAll {
     }
 
     /**
-     * Copy a coverage into one in-memory tile. Empty GeoTIFF tiles come back as null from
-     * {@link RenderedImage#getTile}, and {@code ZonalStatsOpImage.computeTile} throws when that happens.
-     * Pixels that belonged to a null tile are filled with the coverage no-data value (or NaN).
+     * Copy a coverage into one {@link BufferedImage} tile at (0, 0).
+     * {@code ZonalStatsOpImage.computeTile} loads {@code getSourceImage(0)} with the same tile
+     * index it is computing, then calls {@code Raster.getBounds} on the result.
+     * {@code OpImage.getTile} returns null when that index is outside the source tile grid.
+     * The zonal operation copies its tile grid from this image, so a stripped GeoTIFF (one row
+     * per strip) or a cropped read whose tile origin is not (0, 0) has to be collapsed first.
+     * Whether the current tiles happen to be readable is irrelevant: leaving that grid in place
+     * is what makes a later index miss. Pixels from a null tile are filled with the coverage
+     * no-data value, or NaN.
      */
-    private static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
+    static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
         RenderedImage src = coverage.getRenderedImage();
         if (src == null) return coverage;
-        // A single in-memory tile never returns null from getTile. GeoTIFF reads are
-        // tiled ImageRead ops: ZonalStatsOpImage.computeTile calls getTile and NPEs
-        // ("tile is null") on empty or not-yet-realized tiles. Copy first.
-        if (src instanceof BufferedImage
-                && src.getMinX() == 0 && src.getMinY() == 0
-                && src.getNumXTiles() == 1 && src.getNumYTiles() == 1) {
-            return coverage;
-        }
+        SFIToolkit.displayln("GeoTIFF zonal source is " + src.getNumXTiles() + "x" + src.getNumYTiles()
+                + " tiles of " + src.getTileWidth() + "x" + src.getTileHeight()
+                + " at tile (" + src.getMinTileX() + "," + src.getMinTileY()
+                + "), pixel origin (" + src.getMinX() + "," + src.getMinY()
+                + "); materializing one in-memory tile");
         double fill = Double.NaN;
         try {
             double[] nodata = coverage.getSampleDimension(0).getNoDataValues();
@@ -2070,7 +2073,7 @@ public class ReadRasterAll {
     private static Raster readTileOrNull(RenderedImage src, int tileX, int tileY) {
         try {
             return src.getTile(tileX, tileY);
-        } catch (NullPointerException ex) {
+        } catch (RuntimeException ex) {
             return null;
         }
     }
