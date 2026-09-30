@@ -18,6 +18,18 @@
     <encoding>UTF-8</encoding>
   </properties>
 
+  <repositories>
+    <!-- GeoTools releases are published to OSGeo's Nexus, not Maven Central -->
+    <repository>
+      <id>osgeo</id>
+      <name>OSGeo Release Repository</name>
+      <url>https://repo.osgeo.org/repository/release/</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -39,10 +51,6 @@
     <dependency>
       <groupId>org.geotools</groupId>
       <artifactId>gt-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.geotools</groupId>
-      <artifactId>gt-opengis</artifactId>
     </dependency>
     <dependency>
       <groupId>org.geotools</groupId>
@@ -105,7 +113,7 @@
       <groupId>com.stata</groupId>
       <artifactId>sfi-api</artifactId>
       <version>local</version>
-      <scope>provided</scope>
+      <scope>system</scope>
       <systemPath>${env.STATA_SFI_JAR}</systemPath>
     </dependency>
   </dependencies>
@@ -142,6 +150,17 @@
                   <artifact>com.stata:sfi-api</artifact>
                   <excludes>
                     <exclude>**/*</exclude>
+                  </excludes>
+                </filter>
+                <!-- Strip signature files from signed dependency jars (e.g. netcdfAll);
+                     merging classes from multiple jars invalidates their signatures,
+                     causing "Invalid signature file digest for Manifest main attributes" -->
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
                   </excludes>
                 </filter>
               </filters>

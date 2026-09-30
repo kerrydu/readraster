@@ -757,20 +757,21 @@ public class nzonalstatics {
                 }
             }
 
-            // >>> overall extent overlap check (both envelopes now in rasterCRS)
-            if (!actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) reprojShpBounds)) {
-                System.out.println("Warning: The shapefile extent does NOT overlap the NetCDF raster extent.");
-                System.out.println("  Shapefile bounds: " + reprojShpBounds.toString());
-                System.out.println("  NetCDF bounds:   " + actualEnvelope.toString());
-                System.out.println("  No zone will contain valid raster pixels; zonal statistics will be empty.");
-                System.out.println("  Please verify the CRS and the spatial coverage of both datasets.");
-            }
-
             // >>> DIAGNOSTIC: report raster vs shapefile extents (both in rasterCRS) for overlap
+            boolean overallOverlap = actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) reprojShpBounds);
             System.out.println("[Extent diagnostic] rasterEnvelope =" + actualEnvelope.toString());
             System.out.println("[Extent diagnostic] shapeEnvelope  =" + reprojShpBounds.toString());
-            System.out.println("[Extent diagnostic] overallOverlap ="
-                    + actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) reprojShpBounds));
+            System.out.println("[Extent diagnostic] overallOverlap =" + overallOverlap);
+
+            // >>> overall extent overlap check (both envelopes now in rasterCRS)
+            // Do not silently produce NaN statistics: fail fast with a clear diagnostic instead.
+            if (!overallOverlap) {
+                throw new IllegalArgumentException(
+                        "Shapefile and raster extents do not overlap: raster=" + actualEnvelope
+                        + ", vector=" + reprojShpBounds
+                        + " (CRS is the same but the longitude convention may differ; check whether one uses"
+                        + " 0-360 and the other -180-180)");
+            }
 
 
             // Materialize shapefile features for repeated use, keep only polygonal geometries
