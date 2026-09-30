@@ -152,6 +152,10 @@ import org.eclipse.imagen.media.zonal.ZoneGeometry;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateFilter;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.data.collection.ListFeatureCollection;
 
 // GeoTools API imports
 import org.geotools.api.parameter.GeneralParameterValue;
@@ -160,6 +164,7 @@ import org.geotools.api.feature.simple.SimpleFeature;
 import org.geotools.api.feature.type.AttributeDescriptor;
 import org.geotools.api.feature.type.GeometryDescriptor;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.crs.GeographicCRS;
 import org.geotools.api.referencing.datum.PixelInCell;
 import org.geotools.api.referencing.operation.MathTransform;
 import org.geotools.api.geometry.Position;
@@ -326,6 +331,38 @@ public class zonalstatics {
             // Get shapefile bounds AFTER reprojection (if any)
             ReferencedEnvelope shpBounds = featureCollection.getBounds();
             System.out.println("Shapefile bounds for raster reading: " + shpBounds);
+
+            // ==================== 经度表示范围对齐 ====================
+            // CRS 元数据相同（例如都是 WGS84）不代表坐标表示区间相同：栅格可能用 0~360，
+            // 常规 shapefile 用 -180~180。equalsIgnoreMetadata 判定相同、跳过重投影，
+            // 但 X 区间可能完全不重叠，导致分区统计静默产出 NaN。这里把矢量的经度对齐到栅格口径。
+            ReferencedEnvelope rasterEnvForAlign = new ReferencedEnvelope(reader.getOriginalEnvelope());
+            if (isGeographic(rasterCRS)) {
+                double rMinX = rasterEnvForAlign.getMinX(), rMaxX = rasterEnvForAlign.getMaxX();
+                double vMinX = shpBounds.getMinX(), vMaxX = shpBounds.getMaxX();
+                boolean raster0360 = (rMinX >= 0.0 && rMaxX > 180.0);
+                boolean vector0360 = (vMinX >= 0.0 && vMaxX > 180.0);
+                if (raster0360 != vector0360) {
+                    System.out.println("Longitude convention mismatch (raster is "
+                            + (raster0360 ? "0-360" : "-180-180") + ", shapefile is "
+                            + (vector0360 ? "0-360" : "-180-180")
+                            + ") detected; aligning shapefile longitudes to the raster's convention.");
+                    featureCollection = alignLongitudeConvention(featureCollection, raster0360);
+                    shpBounds = featureCollection.getBounds();
+                }
+            }
+
+            boolean overallOverlap = rasterEnvForAlign.intersects((org.locationtech.jts.geom.Envelope) shpBounds);
+            System.out.println("[Extent diagnostic] rasterEnvelope = " + rasterEnvForAlign);
+            System.out.println("[Extent diagnostic] shapeEnvelope  = " + shpBounds);
+            System.out.println("[Extent diagnostic] overallOverlap = " + overallOverlap);
+            if (!overallOverlap) {
+                throw new IllegalArgumentException(
+                        "Shapefile and raster extents do not overlap: raster=" + rasterEnvForAlign
+                        + ", vector=" + shpBounds
+                        + " (CRS is the same but the longitude convention may differ; check whether one uses"
+                        + " 0-360 and the other -180-180)");
+            }
 
             // Create read parameters to limit reading to shapefile's bounds
             GeneralParameterValue[] readParams = null;
@@ -862,6 +899,66 @@ public class zonalstatics {
         // Default fallback
         return name;
     } */
+
+    /**
+     * Returns true if the CRS is geographic (longitude/latitude, degrees).
+     * Used to decide whether the 0-360 vs -180-180 longitude convention fix applies.
+     */
+    private static boolean isGeographic(CoordinateReferenceSystem crs) {
+        return crs instanceof GeographicCRS;
+    }
+
+    /**
+     * Shift all geometries in the collection by a constant longitude offset (degrees).
+     * Resolves the 0-360 vs -180-180 longitude convention mismatch when both datasets
+     * share the same geographic CRS but different longitude ranges.
+     */
+    private static SimpleFeatureCollection alignLongitudeConvention(SimpleFeatureCollection fc, final boolean raster0360) {
+        try {
+            ListFeatureCollection result = new ListFeatureCollection(fc.getSchema());
+            SimpleFeatureIterator it = fc.features();
+            try {
+                while (it.hasNext()) {
+                    SimpleFeature f = it.next();
+                    SimpleFeature f2 = SimpleFeatureBuilder.copy(f);
+                    Object geomObj = f2.getDefaultGeometry();
+                    if (geomObj instanceof Geometry) {
+                        Geometry g = (Geometry) ((Geometry) geomObj).clone();
+                        g.apply(new CoordinateFilter() {
+                            @Override
+                            public void filter(Coordinate coord) {
+                                // Bring the coordinate into the raster's longitude convention.
+                                if (raster0360) {
+                                    // raster uses 0-360: map negatives into [0,360)
+                                    if (coord.x < 0) {
+                                        coord.x += 360.0;
+                                    } else if (coord.x >= 360.0) {
+                                        coord.x -= 360.0;
+                                    }
+                                } else {
+                                    // raster uses -180-180: map values >180 into (-180,180]
+                                    if (coord.x > 180.0) {
+                                        coord.x -= 360.0;
+                                    } else if (coord.x <= -180.0) {
+                                        coord.x += 360.0;
+                                    }
+                                }
+                            }
+                        });
+                        g.geometryChanged();
+                        f2.setDefaultGeometry(g);
+                    }
+                    result.add(f2);
+                }
+            } finally {
+                it.close();
+            }
+            return result;
+        } catch (Exception e) {
+            System.out.println("Warning: failed to align shapefile longitudes: " + e.getMessage());
+            return fc;
+        }
+    }
 }
 
 end
