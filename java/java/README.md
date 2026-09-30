@@ -12,6 +12,13 @@ This folder contains a single consolidated Java class `ReadRasterAll` that merge
 - Java JDK 8+ (GeoTools 34.0 works with 8+, recommend 11 or 17).
 - Apache Maven 3.8+.
 - A local Stata installation providing the SFI Java API JAR (e.g. `sfi-api.jar`). Set an environment variable `STATA_SFI_JAR` pointing to that JAR.
+- Network access to `https://repo.osgeo.org/repository/release/` (GeoTools artifacts are published there, not on Maven Central; the `pom.xml` `<repositories>` section already points at it).
+- `edu.ucar:netcdfAll:5.5.3` is **not** published to any Maven repository. Download it manually and install it into your local repo before running `mvn package`:
+
+```powershell
+curl -L -o netcdfAll-5.5.3.jar https://downloads.unidata.ucar.edu/netcdf-java/5.5.3/netcdfAll-5.5.3.jar
+mvn install:install-file -Dfile=netcdfAll-5.5.3.jar -DgroupId=edu.ucar -DartifactId=netcdfAll -Dversion=5.5.3 -Dpackaging=jar
+```
 
 On Windows (PowerShell):
 
@@ -30,7 +37,7 @@ cd c:\readraster\java
 mvn -q clean package
 ```
 
-Resulting jar: `target\readraster-all-1.0.0-all.jar` (contains GeoTools, NetCDF, JTS, etc. — excludes the Stata SFI which Stata loads itself).
+Resulting jar: `target\readraster-all-1.0.0-all.jar` (contains GeoTools, NetCDF, JTS, etc. — excludes the Stata SFI which Stata loads itself). Copy/rename it to `readraster-all-1.0.0-fat.jar` at the repository root to replace the jar used by `zonalstats.ado`, `gtiffread.ado`, `gtiffdisp.ado`, and `crsconvert.ado`.
 
 ## 3. Using From Stata
 
