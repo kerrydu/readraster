@@ -35,29 +35,39 @@ import javax.imageio.spi.IIORegistry;
 import javax.imageio.spi.ImageInputStreamSpi;
 
 import org.geotools.api.feature.simple.SimpleFeature;
+import org.geotools.api.geometry.Position;
 import org.geotools.api.parameter.GeneralParameterValue;
+import org.geotools.api.parameter.ParameterValue;
 import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.crs.GeographicCRS;
+import org.geotools.api.referencing.datum.PixelInCell;
 import org.geotools.api.referencing.operation.MathTransform;
 import org.geotools.api.referencing.operation.TransformException;
 import org.geotools.coverage.GridSampleDimension;
 import org.geotools.coverage.grid.GridCoordinates2D;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
+import org.geotools.coverage.grid.GridEnvelope2D;
 import org.geotools.coverage.grid.GridGeometry2D;
 import org.geotools.coverage.grid.io.AbstractGridCoverage2DReader;
+import org.geotools.coverage.grid.io.AbstractGridFormat;
 import org.geotools.coverage.grid.io.GridCoverage2DReader;
+import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.shapefile.ShapefileDataStore;
 import org.geotools.data.shapefile.ShapefileDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.data.store.ContentFeatureSource;
 import org.geotools.data.store.ReprojectingFeatureCollection;
+import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.Position2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
 import org.geotools.util.factory.Hints;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateFilter;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
@@ -532,11 +542,90 @@ public class ReadRasterAll {
                 ReferencedEnvelope shpBounds = featureCollection.getBounds();
                 SFIToolkit.displayln("Shapefile bounds for raster reading: " + shpBounds);
 
+                // ==================== 经度表示范围对齐 ====================
+                // CRS 元数据相同（例如都是 WGS84）不代表坐标表示区间相同：栅格可能用 0~360，
+                // 常规 shapefile 用 -180~180。equalsIgnoreMetadata 判定相同、跳过重投影，
+                // 但 X 区间可能完全不重叠，导致分区统计静默产出 NaN。这里把矢量的经度对齐到栅格口径。
+                ReferencedEnvelope rasterEnvForAlign = new ReferencedEnvelope(reader.getOriginalEnvelope());
+                if (isGeographic(rasterCRS)) {
+                    double rMinX = rasterEnvForAlign.getMinX(), rMaxX = rasterEnvForAlign.getMaxX();
+                    double vMinX = shpBounds.getMinX(), vMaxX = shpBounds.getMaxX();
+                    boolean raster0360 = (rMinX >= 0.0 && rMaxX > 180.0);
+                    boolean vector0360 = (vMinX >= 0.0 && vMaxX > 180.0);
+                    if (raster0360 != vector0360) {
+                        SFIToolkit.displayln("Longitude convention mismatch (raster is "
+                                + (raster0360 ? "0-360" : "-180-180") + ", shapefile is "
+                                + (vector0360 ? "0-360" : "-180-180")
+                                + ") detected; aligning shapefile longitudes to the raster's convention.");
+                        featureCollection = alignLongitudeConvention(featureCollection, raster0360);
+                        shpBounds = featureCollection.getBounds();
+                    }
+                }
+
+                boolean overallOverlap = rasterEnvForAlign.intersects((org.locationtech.jts.geom.Envelope) shpBounds);
+                SFIToolkit.displayln("[Extent diagnostic] rasterEnvelope = " + rasterEnvForAlign);
+                SFIToolkit.displayln("[Extent diagnostic] shapeEnvelope  = " + shpBounds);
+                SFIToolkit.displayln("[Extent diagnostic] overallOverlap = " + overallOverlap);
+                if (!overallOverlap) {
+                    throw new IllegalArgumentException(
+                            "Shapefile and raster extents do not overlap: raster=" + rasterEnvForAlign
+                            + ", vector=" + shpBounds
+                            + " (CRS is the same but the longitude convention may differ; check whether one uses"
+                            + " 0-360 and the other -180-180)");
+                }
+
                 // Create read parameters to limit reading to shapefile's bounds
                 GeneralParameterValue[] readParams = null;
                 if (shpBounds != null && !shpBounds.isEmpty()) {
-                    // Optionally optimize raster read to only cover shapefile extent
-                    // (left as a placeholder for future optimization)
+                    try {
+                        ReferencedEnvelope intersection = new ReferencedEnvelope(
+                            Math.max(shpBounds.getMinX(), rasterEnvForAlign.getMinX()),
+                            Math.min(shpBounds.getMaxX(), rasterEnvForAlign.getMaxX()),
+                            Math.max(shpBounds.getMinY(), rasterEnvForAlign.getMinY()),
+                            Math.min(shpBounds.getMaxY(), rasterEnvForAlign.getMaxY()),
+                            rasterEnvForAlign.getCoordinateReferenceSystem());
+
+                        if (intersection.isEmpty()) {
+                            SFIToolkit.displayln("Warning: Shapefile bounds do not overlap with raster extent! Using full raster extent instead.");
+                        } else {
+                            SFIToolkit.displayln("Optimizing raster read to only cover shapefile extent");
+                            SFIToolkit.displayln("Using intersection bounds: " + intersection);
+
+                            MathTransform gridToWorld = reader.getOriginalGridToWorld(PixelInCell.CELL_CENTER);
+                            MathTransform worldToGrid = gridToWorld.inverse();
+                            Position ll = worldToGrid.transform(
+                                    new Position2D(intersection.getMinX(), intersection.getMinY()), null);
+                            Position ur = worldToGrid.transform(
+                                    new Position2D(intersection.getMaxX(), intersection.getMaxY()), null);
+
+                            int gx0 = (int) Math.floor(Math.min(ll.getOrdinate(0), ur.getOrdinate(0)));
+                            int gx1 = (int) Math.ceil(Math.max(ll.getOrdinate(0), ur.getOrdinate(0)));
+                            int gy0 = (int) Math.floor(Math.min(ll.getOrdinate(1), ur.getOrdinate(1)));
+                            int gy1 = (int) Math.ceil(Math.max(ll.getOrdinate(1), ur.getOrdinate(1)));
+
+                            // Clamp to the actual raster grid range so we never request out-of-bounds pixels
+                            org.geotools.api.coverage.grid.GridEnvelope originalRange = reader.getOriginalGridRange();
+                            gx0 = Math.max(gx0, originalRange.getLow(0));
+                            gy0 = Math.max(gy0, originalRange.getLow(1));
+                            gx1 = Math.min(gx1, originalRange.getHigh(0));
+                            gy1 = Math.min(gy1, originalRange.getHigh(1));
+
+                            int gw = Math.max(1, gx1 - gx0 + 1);
+                            int gh = Math.max(1, gy1 - gy0 + 1);
+
+                            GridEnvelope2D pixelRange = new GridEnvelope2D(gx0, gy0, gw, gh);
+                            GridGeometry2D gridGeometry = new GridGeometry2D(
+                                    pixelRange, PixelInCell.CELL_CENTER, gridToWorld, rasterCRS, null);
+
+                            ParameterValue<GridGeometry2D> gg = AbstractGridFormat.READ_GRIDGEOMETRY2D.createValue();
+                            gg.setValue(gridGeometry);
+                            readParams = new GeneralParameterValue[]{gg};
+                            SFIToolkit.displayln("Successfully created optimized read parameters");
+                        }
+                    } catch (Exception e) {
+                        SFIToolkit.displayln("Warning: Could not create optimized read parameters: " + e.getMessage());
+                        readParams = null;
+                    }
                 }
 
                 // Read the raster data - either limited or full depending on whether readParams was set
@@ -1124,6 +1213,38 @@ public class ReadRasterAll {
                     SFIToolkit.displayln("Coordinate systems are compatible, no reprojection needed");
                 }
 
+                // ==================== 经度表示范围对齐 ====================
+                // CRS 元数据相同（例如都是 WGS84）不代表坐标表示区间相同：NetCDF 产品常用 0~360，
+                // 常规 shapefile 用 -180~180。equalsIgnoreMetadata 判定相同、跳过重投影，
+                // 但 X 区间可能完全不重叠，导致分区统计静默产出 NaN。这里把矢量的经度对齐到栅格口径。
+                ReferencedEnvelope alignedShpBounds = featureCollection.getBounds();
+                if (isGeographic(rasterCRS)) {
+                    double rMinX = actualEnvelope.getMinX(), rMaxX = actualEnvelope.getMaxX();
+                    double vMinX = alignedShpBounds.getMinX(), vMaxX = alignedShpBounds.getMaxX();
+                    boolean raster0360 = (rMinX >= 0.0 && rMaxX > 180.0);
+                    boolean vector0360 = (vMinX >= 0.0 && vMaxX > 180.0);
+                    if (raster0360 != vector0360) {
+                        SFIToolkit.displayln("Longitude convention mismatch (raster is "
+                                + (raster0360 ? "0-360" : "-180-180") + ", shapefile is "
+                                + (vector0360 ? "0-360" : "-180-180")
+                                + ") detected; aligning shapefile longitudes to the raster's convention.");
+                        featureCollection = alignLongitudeConvention(featureCollection, raster0360);
+                        alignedShpBounds = featureCollection.getBounds();
+                    }
+                }
+
+                boolean overallOverlap = actualEnvelope.intersects((org.locationtech.jts.geom.Envelope) alignedShpBounds);
+                SFIToolkit.displayln("[Extent diagnostic] rasterEnvelope = " + actualEnvelope);
+                SFIToolkit.displayln("[Extent diagnostic] shapeEnvelope  = " + alignedShpBounds);
+                SFIToolkit.displayln("[Extent diagnostic] overallOverlap = " + overallOverlap);
+                if (!overallOverlap) {
+                    throw new IllegalArgumentException(
+                            "Shapefile and raster extents do not overlap: raster=" + actualEnvelope
+                            + ", vector=" + alignedShpBounds
+                            + " (CRS is the same but the longitude convention may differ; check whether one uses"
+                            + " 0-360 and the other -180-180)");
+                }
+
                 // ----------- 新API调用部分 -----------
                 int totalFeatureCount = 0;
                 List<SimpleFeature> zoneFeatures = new ArrayList<>();
@@ -1658,6 +1779,73 @@ public class ReadRasterAll {
                     try { reader.dispose(); } catch (Exception e) { SFIToolkit.errorln("Error closing reader: " + e.getMessage()); }
                 }
             }
+        }
+    }
+
+    // ==================== Shared helpers: longitude convention alignment ====================
+    // CRS metadata being equal (e.g. two flavors of WGS84) does NOT guarantee that the longitude
+    // values are expressed on the same interval: NetCDF products (e.g. NEX-GDDP-CMIP6) commonly use
+    // 0-360, while shapefiles commonly use -180-180. CRS.equalsIgnoreMetadata() returns true for both,
+    // so no reprojection is triggered, but the X extents may not overlap at all, silently producing
+    // NaN zonal statistics. These helpers detect and fix that mismatch.
+
+    /** Whether the given CRS is a geographic (lat/lon in degrees) CRS; used to gate the longitude fix. */
+    private static boolean isGeographic(CoordinateReferenceSystem crs) {
+        return crs instanceof GeographicCRS;
+    }
+
+    /**
+     * Shift every geometry in the collection onto the given longitude convention.
+     * Only coordinates that fall in the "wrong" half of the range are moved, so data that is
+     * already correct is left untouched (e.g. a US shapefile with all X in [-125, -67] is not
+     * affected when aligning to 0-360, only values below 0 would be shifted).
+     *
+     * @param fc the source feature collection
+     * @param raster0360 true to align to the 0-360 convention, false to align to -180-180
+     */
+    private static SimpleFeatureCollection alignLongitudeConvention(SimpleFeatureCollection fc, final boolean raster0360) {
+        try {
+            ListFeatureCollection result = new ListFeatureCollection(fc.getSchema());
+            SimpleFeatureIterator it = fc.features();
+            try {
+                while (it.hasNext()) {
+                    SimpleFeature f = it.next();
+                    SimpleFeature f2 = SimpleFeatureBuilder.copy(f);
+                    Object geomObj = f2.getDefaultGeometry();
+                    if (geomObj instanceof Geometry) {
+                        Geometry g = (Geometry) ((Geometry) geomObj).clone();
+                        g.apply(new CoordinateFilter() {
+                            @Override
+                            public void filter(Coordinate coord) {
+                                if (raster0360) {
+                                    // -180-180 -> 0-360
+                                    if (coord.x < 0) {
+                                        coord.x += 360.0;
+                                    } else if (coord.x >= 360.0) {
+                                        coord.x -= 360.0;
+                                    }
+                                } else {
+                                    // 0-360 -> -180-180
+                                    if (coord.x > 180.0) {
+                                        coord.x -= 360.0;
+                                    } else if (coord.x <= -180.0) {
+                                        coord.x += 360.0;
+                                    }
+                                }
+                            }
+                        });
+                        g.geometryChanged();
+                        f2.setDefaultGeometry(g);
+                    }
+                    result.add(f2);
+                }
+            } finally {
+                it.close();
+            }
+            return result;
+        } catch (Exception e) {
+            SFIToolkit.displayln("Warning: failed to align shapefile longitudes: " + e.getMessage());
+            return fc;
         }
     }
 }
