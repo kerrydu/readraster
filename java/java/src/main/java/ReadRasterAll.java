@@ -4,20 +4,13 @@ package org.readraster;
 // This class is placed in a named package to avoid classloader issues with default package in some environments.
 // Public entry points remain the same; call with fully-qualified class name from Stata: org.readraster.ReadRasterAll
 
-import java.awt.Point;
 import java.awt.Transparency;
 import java.awt.color.ColorSpace;
-import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
-import java.awt.image.DataBufferByte;
-import java.awt.image.DataBufferDouble;
 import java.awt.image.DataBufferFloat;
-import java.awt.image.DataBufferInt;
-import java.awt.image.DataBufferShort;
-import java.awt.image.DataBufferUShort;
 import java.awt.image.PixelInterleavedSampleModel;
 import java.awt.image.Raster;
 import java.awt.image.RenderedImage;
@@ -75,8 +68,6 @@ import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.Position2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
-import org.geotools.referencing.operation.transform.ConcatenatedTransform;
-import org.geotools.referencing.operation.transform.ProjectiveTransform;
 import org.geotools.util.factory.Hints;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -615,6 +606,11 @@ public class ReadRasterAll {
                             int gx1 = (int) Math.ceil(Math.max(ll.getOrdinate(0), ur.getOrdinate(0)));
                             int gy0 = (int) Math.floor(Math.min(ll.getOrdinate(1), ur.getOrdinate(1)));
                             int gy1 = (int) Math.ceil(Math.max(ll.getOrdinate(1), ur.getOrdinate(1)));
+                            // One extra cell so a polygon that only touches the boundary pixel is not clipped by rounding.
+                            gx0 -= 1;
+                            gy0 -= 1;
+                            gx1 += 1;
+                            gy1 += 1;
 
                             // Clamp to the actual raster grid range so we never request out-of-bounds pixels
                             org.geotools.api.coverage.grid.GridEnvelope originalRange = reader.getOriginalGridRange();
@@ -633,7 +629,8 @@ public class ReadRasterAll {
                             ParameterValue<GridGeometry2D> gg = AbstractGridFormat.READ_GRIDGEOMETRY2D.createValue();
                             gg.setValue(gridGeometry);
                             readParams = new GeneralParameterValue[]{gg};
-                            SFIToolkit.displayln("Successfully created optimized read parameters");
+                            SFIToolkit.displayln("Reading raster window " + gw + "x" + gh
+                                    + " at grid (" + gx0 + "," + gy0 + "), including a 1-pixel margin around the shapefile");
                         }
                     } catch (Exception e) {
                         SFIToolkit.displayln("Warning: Could not create optimized read parameters: " + e.getMessage());
@@ -765,29 +762,12 @@ public class ReadRasterAll {
 
                 org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
                 int[] bands = new int[] {bandIndex};
+                Range nodata = noDataRange(coverage, bandIndex);
+                SFIToolkit.displayln("Zonal NoData passed to RasterZonalStatistics2: "
+                        + (nodata == null ? "none" : nodata.toString()));
 
-                // ZonalStatsOpImage.computeTile uses its own tile index on the source and NPEs
-                // when that getTile is null. Collapse the (possibly stripped) read first.
-                coverage = materializeNullSafeCoverage(coverage);
-
-                org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
-                org.eclipse.imagen.media.zonal.ZonalStatsOpImage.setNullTileListener(
-                        (tileX, tileY, detail) -> SFIToolkit.displayln(detail));
-                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
-                        coverage,
-                        bands,
-                        zoneFeatures,
-                        null,
-                        null,
-                        null,
-                        false,
-                        null,
-                        statsArray,
-                        null,
-                        null,
-                        null,
-                        null,
-                        false);
+                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = executeZonal(
+                        coverage, bands, zoneFeatures, nodata, statsArray);
 
                 if (zoneGeometries == null) {
                     zoneGeometries = new ArrayList<>();
@@ -1416,24 +1396,8 @@ public class ReadRasterAll {
                 org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
                 int[] bandsArr = new int[] {0};
 
-                org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
-                org.eclipse.imagen.media.zonal.ZonalStatsOpImage.setNullTileListener(
-                        (tileX, tileY, detail) -> SFIToolkit.displayln(detail));
-                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
-                        coverage,
-                        bandsArr,
-                        zoneFeatures,
-                        null,
-                        noDataRange,
-                        null,
-                        false,
-                        null,
-                        statsArray,
-                        null,
-                        null,
-                        null,
-                        null,
-                        false);
+                List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = executeZonal(
+                        coverage, bandsArr, zoneFeatures, noDataRange, statsArray);
                 if (zoneGeometries == null) {
                     zoneGeometries = new ArrayList<>();
                 }
@@ -1965,104 +1929,74 @@ public class ReadRasterAll {
     }
 
     /**
-     * Build the same kind of coverage the NetCDF path hands to {@code RasterZonalStatistics2}:
-     * one {@link BufferedImage} tile at (0, 0), not the file's strip grid.
+     * Run {@code RasterZonalStatistics2} on the coverage the reader already produced.
      *
-     * <p>{@code ZonalStatsOpImage.computeTile} does {@code getSourceImage(0).getTile(tileX, tileY)}
-     * and then {@code tile.getBounds()}. Source 0 is the data coverage's rendered image.
-     * {@code RasterZonalStatistics2} wraps {@code GridCoverage2DRIA} and {@code NullDescriptor}
-     * only around a non-null classifier, and stores that chain in the classifier parameter.
-     * Both callers pass a null classifier, so that chain is not created and is not source 0.
-     *
-     * <p>Pixels are read with {@link RenderedImage#getData()} into a {@code float[]} and wrapped
-     * the same way as {@code floatArrayToImage}. The original grid-to-CRS is kept (plus a
-     * translation when the file image origin is not (0, 0)); the envelope overload would
-     * re-decide axis order.
+     * <p>JAI's default tile size is 512. For a single tile at least twice that wide,
+     * {@code OpImage} rebuilds the operation grid and then asks the source for those
+     * indexes. A striped GeoTIFF only has tile X = 0, so the lookup is null and
+     * {@code computeTile} crashes. Pinning the default tile size to the reader's
+     * own tile size for the call makes the operation keep that grid. The image
+     * itself is not copied.
      */
-    static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
-        RenderedImage src = coverage.getRenderedImage();
-        if (src == null) return coverage;
-        SFIToolkit.displayln("GeoTIFF zonal source is " + src.getClass().getName()
-                + " " + src.getNumXTiles() + "x" + src.getNumYTiles()
-                + " tiles of " + src.getTileWidth() + "x" + src.getTileHeight()
-                + " at tile (" + src.getMinTileX() + "," + src.getMinTileY()
-                + "), pixel origin (" + src.getMinX() + "," + src.getMinY() + ")");
-        double fill = Double.NaN;
-        try {
-            double[] nodata = coverage.getSampleDimension(0).getNoDataValues();
-            if (nodata != null && nodata.length > 0) fill = nodata[0];
-        } catch (RuntimeException ignore) {
-            fill = Double.NaN;
-        }
-        int[] nullTiles = new int[1];
-        BufferedImage image = singleTileFloatImage(src, fill, nullTiles);
-        if (nullTiles[0] > 0) {
-            SFIToolkit.displayln("GeoTIFF returned " + nullTiles[0]
-                    + " empty tile(s); materialized an in-memory raster so zonal statistics can run");
-        }
-        Map<String, Object> props = new HashMap<>();
-        String[] names = coverage.getPropertyNames();
-        if (names != null) {
-            for (String propertyName : names) {
-                Object value = coverage.getProperty(propertyName);
-                if (value != null && value != java.awt.Image.UndefinedProperty) {
-                    props.put(propertyName, value);
-                }
+    private static List<org.eclipse.imagen.media.zonal.ZoneGeometry> executeZonal(
+            GridCoverage2D coverage,
+            int[] bands,
+            List<SimpleFeature> zones,
+            Range nodata,
+            org.eclipse.imagen.media.stats.Statistics.StatsType[] stats) {
+        java.awt.image.RenderedImage image = coverage.getRenderedImage();
+        java.awt.Dimension previous = org.eclipse.imagen.ImageN.getDefaultTileSize();
+        int tileWidth = image.getTileWidth() > 0 ? image.getTileWidth() : Math.max(image.getWidth(), 1);
+        int tileHeight = image.getTileHeight() > 0 ? image.getTileHeight() : Math.max(image.getHeight(), 1);
+        java.awt.Dimension pinned = new java.awt.Dimension(tileWidth, tileHeight);
+        SFIToolkit.displayln("Zonal image " + image.getClass().getName()
+                + " tiles " + image.getNumXTiles() + "x" + image.getNumYTiles()
+                + " of " + tileWidth + "x" + tileHeight
+                + " at (" + image.getMinTileX() + "," + image.getMinTileY() + ")"
+                + "; pinning JAI tile size to that grid so zonal statistics do not retile it");
+        synchronized (JAI_TILE_LOCK) {
+            org.eclipse.imagen.ImageN.setDefaultTileSize(pinned);
+            try {
+                return new org.geotools.process.raster.RasterZonalStatistics2().execute(
+                        coverage,
+                        bands,
+                        zones,
+                        null,
+                        nodata,
+                        null,
+                        false,
+                        null,
+                        stats,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false);
+            } finally {
+                org.eclipse.imagen.ImageN.setDefaultTileSize(
+                        previous == null ? new java.awt.Dimension(512, 512) : previous);
             }
         }
-        MathTransform gridToCrs = coverage.getGridGeometry().getGridToCRS2D();
-        if (src.getMinX() != 0 || src.getMinY() != 0) {
-            MathTransform shift = ProjectiveTransform.create(
-                    AffineTransform.getTranslateInstance(src.getMinX(), src.getMinY()));
-            gridToCrs = ConcatenatedTransform.create(shift, gridToCrs);
-        }
-        GridCoverage2D created = new GridCoverageFactory().create(
-                coverage.getName().toString(),
-                image,
-                coverage.getCoordinateReferenceSystem(),
-                gridToCrs,
-                null,
-                null,
-                props.isEmpty() ? null : props);
-        RenderedImage out = created.getRenderedImage();
-        Raster check = null;
-        try {
-            check = out.getTile(out.getMinTileX(), out.getMinTileY());
-        } catch (RuntimeException ignore) {
-            check = null;
-        }
-        SFIToolkit.displayln("GeoTIFF zonal image passed to RasterZonalStatistics2 is " + out.getClass().getName()
-                + " tiles " + out.getNumXTiles() + "x" + out.getNumYTiles()
-                + " at (" + out.getMinTileX() + "," + out.getMinTileY() + ")"
-                + " getTile=" + (check == null ? "null" : "present"));
-        return created;
     }
 
-    /**
-     * One-band images become a float {@link BufferedImage}, matching the NetCDF path.
-     * {@code getData} reads the cropped window without using the strip index that
-     * {@code computeTile} later mishandles. If that read fails, empty tiles are filled
-     * and the same float image is built from the filled raster.
-     */
-    private static BufferedImage singleTileFloatImage(RenderedImage src, double fill, int[] nullTiles) {
-        if (src.getSampleModel().getNumBands() != 1) {
-            return rasterWithoutNullTiles(src, fill, nullTiles);
+    /** No-data range the zonal API excludes. A NaN bound never matches, so it is not passed. */
+    private static Range noDataRange(GridCoverage2D coverage, int band) {
+        try {
+            org.eclipse.imagen.media.range.NoDataContainer container = CoverageUtilities.getNoDataProperty(coverage);
+            if (container != null) {
+                Range range = container.getAsRange();
+                double single = container.getAsSingleValue();
+                if (range != null && !Double.isNaN(single)) return range;
+            }
+        } catch (RuntimeException ignore) {
+            // The coverage simply has no no-data property.
         }
         try {
-            Raster data = src.getData();
-            int width = data.getWidth();
-            int height = data.getHeight();
-            float[] flat = new float[width * height];
-            data.getSamples(data.getMinX(), data.getMinY(), width, height, 0, flat);
-            return newGrayFloatImage(flat, width, height);
-        } catch (RuntimeException | OutOfMemoryError ex) {
-            SFIToolkit.displayln("GeoTIFF getData failed (" + ex.getClass().getSimpleName()
-                    + ": " + ex.getMessage() + "); filling empty tiles before zonal statistics");
-            BufferedImage filled = rasterWithoutNullTiles(src, fill, nullTiles);
-            Raster data = filled.getRaster();
-            float[] flat = new float[data.getWidth() * data.getHeight()];
-            data.getSamples(0, 0, data.getWidth(), data.getHeight(), 0, flat);
-            return newGrayFloatImage(flat, data.getWidth(), data.getHeight());
+            double[] values = coverage.getSampleDimension(band).getNoDataValues();
+            if (values == null || values.length == 0 || Double.isNaN(values[0])) return null;
+            return RangeFactory.create(values[0], true, values[0], true);
+        } catch (RuntimeException ignore) {
+            return null;
         }
     }
 
@@ -2081,83 +2015,5 @@ public class ReadRasterAll {
         return new BufferedImage(cm, raster, false, null);
     }
 
-    static BufferedImage rasterWithoutNullTiles(RenderedImage src, double fillValue) {
-        return rasterWithoutNullTiles(src, fillValue, null);
-    }
-
-    static BufferedImage rasterWithoutNullTiles(RenderedImage src, double fillValue, int[] nullTileCount) {
-        int width = src.getWidth();
-        int height = src.getHeight();
-        SampleModel sm = src.getSampleModel().createCompatibleSampleModel(width, height);
-        WritableRaster dest = Raster.createWritableRaster(sm, new Point(0, 0));
-        fillRaster(dest, fillValue);
-        int minX = src.getMinX();
-        int minY = src.getMinY();
-        int minTX = src.getMinTileX();
-        int minTY = src.getMinTileY();
-        for (int ty = 0; ty < src.getNumYTiles(); ty++) {
-            for (int tx = 0; tx < src.getNumXTiles(); tx++) {
-                Raster tile = readTileOrNull(src, minTX + tx, minTY + ty);
-                if (tile == null) {
-                    if (nullTileCount != null) nullTileCount[0]++;
-                    continue;
-                }
-                dest.setRect(-minX, -minY, tile);
-            }
-        }
-        ColorModel cm = src.getColorModel();
-        if (cm != null && cm.isCompatibleRaster(dest)) {
-            return new BufferedImage(cm, dest, cm.isAlphaPremultiplied(), null);
-        }
-        int dataType = sm.getDataType();
-        int bands = sm.getNumBands();
-        ColorSpace cs = ColorSpace.getInstance(bands == 1 ? ColorSpace.CS_GRAY : ColorSpace.CS_sRGB);
-        int[] bits = new int[bands];
-        Arrays.fill(bits, DataBuffer.getDataTypeSize(dataType));
-        ColorModel fallback = new ComponentColorModel(cs, bits, false, false, Transparency.OPAQUE, dataType);
-        if (!fallback.isCompatibleRaster(dest)) {
-            throw new IllegalArgumentException("Cannot build an in-memory image for data type " + dataType + " with " + bands + " bands");
-        }
-        return new BufferedImage(fallback, dest, false, null);
-    }
-
-    private static Raster readTileOrNull(RenderedImage src, int tileX, int tileY) {
-        try {
-            return src.getTile(tileX, tileY);
-        } catch (RuntimeException ex) {
-            return null;
-        }
-    }
-
-    private static void fillRaster(WritableRaster raster, double fillValue) {
-        DataBuffer db = raster.getDataBuffer();
-        int type = db.getDataType();
-        if (Double.isNaN(fillValue) && type != DataBuffer.TYPE_FLOAT && type != DataBuffer.TYPE_DOUBLE) {
-            fillValue = 0.0;
-        }
-        for (int bank = 0; bank < db.getNumBanks(); bank++) {
-            switch (type) {
-                case DataBuffer.TYPE_BYTE:
-                    Arrays.fill(((DataBufferByte) db).getData(bank), (byte) fillValue);
-                    break;
-                case DataBuffer.TYPE_USHORT:
-                    Arrays.fill(((DataBufferUShort) db).getData(bank), (short) fillValue);
-                    break;
-                case DataBuffer.TYPE_SHORT:
-                    Arrays.fill(((DataBufferShort) db).getData(bank), (short) fillValue);
-                    break;
-                case DataBuffer.TYPE_INT:
-                    Arrays.fill(((DataBufferInt) db).getData(bank), (int) fillValue);
-                    break;
-                case DataBuffer.TYPE_FLOAT:
-                    Arrays.fill(((DataBufferFloat) db).getData(bank), (float) fillValue);
-                    break;
-                case DataBuffer.TYPE_DOUBLE:
-                    Arrays.fill(((DataBufferDouble) db).getData(bank), fillValue);
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
+    private static final Object JAI_TILE_LOCK = new Object();
 }
