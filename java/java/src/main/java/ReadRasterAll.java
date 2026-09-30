@@ -771,6 +771,8 @@ public class ReadRasterAll {
                 coverage = materializeNullSafeCoverage(coverage);
 
                 org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
+                org.eclipse.imagen.media.zonal.ZonalStatsOpImage.setNullTileListener(
+                        (tileX, tileY, detail) -> SFIToolkit.displayln(detail));
                 List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
                         coverage,
                         bands,
@@ -1415,6 +1417,8 @@ public class ReadRasterAll {
                 int[] bandsArr = new int[] {0};
 
                 org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
+                org.eclipse.imagen.media.zonal.ZonalStatsOpImage.setNullTileListener(
+                        (tileX, tileY, detail) -> SFIToolkit.displayln(detail));
                 List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
                         coverage,
                         bandsArr,
