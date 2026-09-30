@@ -41,6 +41,68 @@ dependencies {
     implementation 'com.google.re2j:re2j:1.7'
 }
 
+// Append every META-INF/services entry and every JAI registry file.
+// Jar-level duplicatesStrategy=EXCLUDE keeps the first copy of a path, so the
+// original descriptors must be excluded from the dependency trees or the merged
+// files written below are silently dropped.
+def mergeServiceAndRegistries = { File servicesDir, File registriesDir, jars ->
+    if (servicesDir.exists()) project.delete(servicesDir)
+    servicesDir.mkdirs()
+    if (registriesDir.exists()) project.delete(registriesDir)
+    registriesDir.mkdirs()
+
+    def svcMap = [:].withDefault { new LinkedHashSet<String>() }
+    def isRegistry = { String n ->
+        n == 'META-INF/registryFile.jai' ||
+                n == 'META-INF/org.eclipse.imagen.registryFile.jai' ||
+                (n.startsWith('META-INF/') && n.contains('registryFile') && n.endsWith('.jai'))
+    }
+    def regBuilder = new StringBuilder()
+    regBuilder.append('# Merged by fatJar task\n')
+
+    jars.findAll { it != null && it.exists() && it.isFile() && it.name.endsWith('.jar') }.each { File jf ->
+        new java.util.zip.ZipFile(jf).withCloseable { zip ->
+            zip.entries().each { ent ->
+                if (ent.isDirectory()) return
+                if (ent.name.startsWith('META-INF/services/')) {
+                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
+                    reader.lines().forEach { ln ->
+                        def t = ln.trim()
+                        if (t && !t.startsWith('#')) svcMap[ent.name] << t
+                    }
+                    reader.close()
+                } else if (isRegistry(ent.name)) {
+                    regBuilder.append('\n# from ').append(jf.name).append('!').append(ent.name).append('\n')
+                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
+                    reader.lines().forEach { ln -> regBuilder.append(ln).append('\n') }
+                    reader.close()
+                }
+            }
+        }
+    }
+
+    svcMap.each { path, lines ->
+        def outFile = new File(servicesDir, path)
+        outFile.parentFile.mkdirs()
+        outFile.text = lines.join(System.lineSeparator()) + System.lineSeparator()
+    }
+    def regText = regBuilder.toString()
+    def regOut = new File(registriesDir, 'META-INF/registryFile.jai')
+    def regOutImagen = new File(registriesDir, 'META-INF/org.eclipse.imagen.registryFile.jai')
+    regOut.parentFile.mkdirs()
+    regOutImagen.parentFile.mkdirs()
+    regOut.text = regText
+    regOutImagen.text = regText
+    return [services: svcMap.size(), registryLines: regText.readLines().size()]
+}
+
+def metaInfMergeExcludes = {
+    exclude 'META-INF/services/**'
+    exclude 'META-INF/registryFile.jai'
+    exclude 'META-INF/org.eclipse.imagen.registryFile.jai'
+    exclude 'META-INF/**/*registryFile*.jai'
+}
+
 // Produce a standalone fat JAR including all runtime dependencies
 tasks.register('fatJar', Jar) {
     archiveBaseName.set('readraster-all')
@@ -54,13 +116,14 @@ tasks.register('fatJar', Jar) {
     def mergedServicesDir = new File(buildDir, "tmp/merged-services-fat")
     def mergedRegistriesDir = new File(buildDir, "tmp/merged-registries-fat")
 
-    // Add all runtime dependency contents, but exclude original service descriptors
-    from {
+    // The exclude spec MUST be the configuration closure of from(). A following
+    // bare closure is discarded, the unmerged META-INF files stay in the jar, and
+    // DuplicatesStrategy.EXCLUDE then drops the merged copies.
+    from({
         configurations.runtimeClasspath
                 .filter { it.exists() }
                 .collect { it.isDirectory() ? it : zipTree(it) }
-    }
-    { exclude 'META-INF/services/**', 'META-INF/*registryFile*.jai', 'META-INF/**/registryFile*.jai' }
+    }, metaInfMergeExcludes)
 
     // Include merged service descriptors
     from { mergedServicesDir }
@@ -73,69 +136,13 @@ tasks.register('fatJar', Jar) {
     // manifest { attributes('Main-Class': 'org.readraster.ReadRasterAll') }
 
     doFirst {
-        // Build merged META-INF/services files across all dependencies
-        if (mergedServicesDir.exists()) project.delete(mergedServicesDir)
-        mergedServicesDir.mkdirs()
-
-        def svcMap = [:].withDefault { new LinkedHashSet<String>() }
-
-        configurations.runtimeClasspath.filter { it.exists() && it.name.endsWith('.jar') }.each { File jf ->
-            new java.util.zip.ZipFile(jf).withCloseable { zip ->
-                zip.entries().findAll { it.name.startsWith('META-INF/services/') && !it.isDirectory() }.each { ent ->
-                    def key = ent.name
-                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
-                    reader.lines().forEach { ln ->
-                        def t = ln.trim()
-                        if (t && !t.startsWith('#')) svcMap[key] << t
-                    }
-                    reader.close()
-                }
-            }
-        }
-
-        // Write merged files
-        svcMap.each { path, lines ->
-            def outFile = new File(mergedServicesDir, path)
-            outFile.parentFile.mkdirs()
-            outFile.text = lines.join(System.lineSeparator()) + System.lineSeparator()
-        }
-
-        // Build merged JAI/Eclipse Imagen registry files so all operations (e.g., ImageRead) register
-        if (mergedRegistriesDir.exists()) project.delete(mergedRegistriesDir)
-        mergedRegistriesDir.mkdirs()
-        def regOut = new File(mergedRegistriesDir, 'META-INF/registryFile.jai')
-        def regOutImagen = new File(mergedRegistriesDir, 'META-INF/org.eclipse.imagen.registryFile.jai')
-        regOut.parentFile.mkdirs()
-        regOutImagen.parentFile.mkdirs()
-        def regBuilder = new StringBuilder()
-        regBuilder.append('# Merged by fatJar task\n')
-
-        def isRegistry = { String n ->
-            (n ==~ /META-INF\/registryFile\.jai/ ||
-             n ==~ /META-INF\/org\.eclipse\.imagen\.registryFile\.jai/ ||
-             n ==~ /META-INF\/.*registryFile.*\.jai/ ||
-             n ==~ /META-INF\/imagen\/.*registryFile.*\.jai/)
-        }
-
-        configurations.runtimeClasspath.filter { it.exists() && it.name.endsWith('.jar') }.each { File jf ->
-            new java.util.zip.ZipFile(jf).withCloseable { zip ->
-                zip.entries().findAll { isRegistry(it.name) && !it.isDirectory() }.each { ent ->
-                    regBuilder.append("\n# from ").append(jf.name).append('!').append(ent.name).append('\n')
-                    def reader = new BufferedReader(new InputStreamReader(zip.getInputStream(ent), 'UTF-8'))
-                    reader.lines().forEach { ln -> regBuilder.append(ln).append('\n') }
-                    reader.close()
-                }
-            }
-        }
-        def regText = regBuilder.toString()
-        regOut.text = regText
-        regOutImagen.text = regText
-
+        def jars = configurations.runtimeClasspath.filter { it.exists() && it.name.endsWith('.jar') }
+        def merged = mergeServiceAndRegistries(mergedServicesDir, mergedRegistriesDir, jars)
         def files = configurations.runtimeClasspath.findAll { it.exists() }
         def total = files.collect { it.length() }.sum(0L)
         println "[fatJar] Including ${files.size()} artifacts (~${Math.round(total/1024/1024)} MB)"
-        println "[fatJar] Merged ${svcMap.size()} service descriptors"
-        println "[fatJar] Wrote merged registry file with ${regBuilder.toString().readLines().size()} lines"
+        println "[fatJar] Merged ${merged.services} service descriptors"
+        println "[fatJar] Wrote merged registry file with ${merged.registryLines} lines"
     }
 }
 
@@ -146,6 +153,9 @@ tasks.register('fatJarSlim', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from sourceSets.main.output
+
+    def mergedServicesDir = new File(buildDir, "tmp/merged-services-slim")
+    def mergedRegistriesDir = new File(buildDir, "tmp/merged-registries-slim")
 
     def slimDropGlobs = [
             'wiremock-standalone-*.jar',
@@ -175,13 +185,18 @@ tasks.register('fatJarSlim', Jar) {
         !slimDropGlobs.any { g -> isGlobMatch(f.name, g) }
     }
 
-    from { slimFiles.collect { it.isDirectory() ? it : zipTree(it) } }
+    from({ slimFiles.collect { it.isDirectory() ? it : zipTree(it) } }, metaInfMergeExcludes)
+    from { mergedServicesDir }
+    from { mergedRegistriesDir }
 
     exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
 
     doFirst {
+        def merged = mergeServiceAndRegistries(mergedServicesDir, mergedRegistriesDir, slimFiles)
         def total = slimFiles.collect { it.length() }.sum(0L)
         println "[fatJarSlim] Including ${slimFiles.size()} artifacts (~${Math.round(total/1024/1024)} MB)"
+        println "[fatJarSlim] Merged ${merged.services} service descriptors"
+        println "[fatJarSlim] Wrote merged registry file with ${merged.registryLines} lines"
         slimFiles.each { println "  - ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
     }
 }
@@ -196,6 +211,9 @@ tasks.register('fatJarAuto', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from sourceSets.main.output
+
+    def mergedServicesDir = new File(buildDir, "tmp/merged-services-auto")
+    def mergedRegistriesDir = new File(buildDir, "tmp/merged-registries-auto")
 
     def allJars = fileTree(dir: libsDir, include: ['**/*.jar']).files.toList()
     def nameLc = { File f -> f.name.toLowerCase(Locale.ROOT) }
@@ -232,16 +250,21 @@ tasks.register('fatJarAuto', Jar) {
     }
 
     def kept = allJars.findAll(shouldKeep)
-    from { kept.collect { it.isDirectory() ? it : zipTree(it) } }
+    from({ kept.collect { it.isDirectory() ? it : zipTree(it) } }, metaInfMergeExcludes)
+    from { mergedServicesDir }
+    from { mergedRegistriesDir }
 
     exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
 
     doFirst {
+        def merged = mergeServiceAndRegistries(mergedServicesDir, mergedRegistriesDir, kept)
         def dropped = allJars - kept
         def sum = { files -> files.collect { it.length() }.sum(0L) }
         println "[fatJarAuto] libsDir=${libsDir}"
         println "[fatJarAuto] Including ${kept.size()} jars (~${Math.round(sum(kept)/1024/1024)} MB)"
         println "[fatJarAuto] Dropped ${dropped.size()} jars (~${Math.round(sum(dropped)/1024/1024)} MB)"
+        println "[fatJarAuto] Merged ${merged.services} service descriptors"
+        println "[fatJarAuto] Wrote merged registry file with ${merged.registryLines} lines"
         println "[fatJarAuto] Top kept:"; kept.sort { -it.length() }.take(20).each { println "  + ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
         println "[fatJarAuto] Top dropped:"; dropped.sort { -it.length() }.take(20).each { println "  x ${it.name} (${Math.round(it.length()/1024/1024)} MB)" }
     }

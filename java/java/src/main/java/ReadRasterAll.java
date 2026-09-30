@@ -4,15 +4,23 @@ package org.readraster;
 // This class is placed in a named package to avoid classloader issues with default package in some environments.
 // Public entry points remain the same; call with fully-qualified class name from Stata: org.readraster.ReadRasterAll
 
+import java.awt.Point;
 import java.awt.Transparency;
 import java.awt.color.ColorSpace;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
+import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferDouble;
 import java.awt.image.DataBufferFloat;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DataBufferShort;
+import java.awt.image.DataBufferUShort;
 import java.awt.image.PixelInterleavedSampleModel;
 import java.awt.image.Raster;
+import java.awt.image.RenderedImage;
 import java.awt.image.SampleModel;
 import java.awt.image.WritableRaster;
 import java.io.File;
@@ -43,7 +51,10 @@ import org.geotools.api.referencing.crs.GeographicCRS;
 import org.geotools.api.referencing.datum.PixelInCell;
 import org.geotools.api.referencing.operation.MathTransform;
 import org.geotools.api.referencing.operation.TransformException;
+import org.eclipse.imagen.media.range.Range;
+import org.eclipse.imagen.media.range.RangeFactory;
 import org.geotools.coverage.GridSampleDimension;
+import org.geotools.coverage.util.CoverageUtilities;
 import org.geotools.coverage.grid.GridCoordinates2D;
 import org.geotools.coverage.grid.GridCoverage2D;
 import org.geotools.coverage.grid.GridCoverageFactory;
@@ -64,6 +75,8 @@ import org.geotools.gce.geotiff.GeoTiffReader;
 import org.geotools.geometry.Position2D;
 import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.referencing.CRS;
+import org.geotools.referencing.operation.transform.ConcatenatedTransform;
+import org.geotools.referencing.operation.transform.ProjectiveTransform;
 import org.geotools.util.factory.Hints;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -753,6 +766,10 @@ public class ReadRasterAll {
                 org.eclipse.imagen.media.stats.Statistics.StatsType[] statsArray = statsToRequest.toArray(new org.eclipse.imagen.media.stats.Statistics.StatsType[0]);
                 int[] bands = new int[] {bandIndex};
 
+                // Tiled GeoTIFFs can return a null Raster for empty tiles. ZonalStatsOpImage.computeTile
+                // dereferences that raster immediately, so materialize a single in-memory image first.
+                coverage = materializeNullSafeCoverage(coverage);
+
                 org.geotools.process.raster.RasterZonalStatistics2 process = new org.geotools.process.raster.RasterZonalStatistics2();
                 List<org.eclipse.imagen.media.zonal.ZoneGeometry> zoneGeometries = process.execute(
                         coverage,
@@ -1160,10 +1177,15 @@ public class ReadRasterAll {
                 Index index = dataArray.getIndex();
 
                 boolean isDouble = ncVar.getDataType().isFloatingPoint() && ncVar.getDataType().toString().equalsIgnoreCase("double");
-                double fillValueDouble = Double.NaN; float fillValueFloat = Float.NaN;
-                if (fillAttr != null) {
-                    if (isDouble) fillValueDouble = fillAttr.getNumericValue().doubleValue();
-                    else fillValueFloat = fillAttr.getNumericValue().floatValue();
+                double fillValueDouble = Double.NaN;
+                float fillValueFloat = Float.NaN;
+                boolean hasFill = false;
+                if (fillAttr != null && fillAttr.getNumericValue() != null) {
+                    hasFill = true;
+                    fillValueDouble = fillAttr.getNumericValue().doubleValue();
+                    // The raster handed to zonal stats is float, so the excluded value must be
+                    // the same bits that are stored in the grid, not the original double.
+                    fillValueFloat = (float) fillValueDouble;
                 }
 
                 int[] actualShape2 = dataArray.getShape();
@@ -1176,6 +1198,10 @@ public class ReadRasterAll {
                 int height2 = actualShape2[yDim2];
                 int width2 = actualShape2[xDim2];
                 int[] indices = new int[actualDims2];
+                float validMin = Float.NaN;
+                float validMax = Float.NaN;
+                int missingCellCount = 0;
+                boolean fillFitsInFloat = hasFill && !Float.isNaN(fillValueFloat) && !Float.isInfinite(fillValueFloat);
 
                 for (int y = 0; y < height2; y++) {
                     for (int x = 0; x < width2; x++) {
@@ -1184,23 +1210,89 @@ public class ReadRasterAll {
                         float value;
                         if (isDouble) {
                             double dval = dataArray.getDouble(index);
-                            boolean isMissing = !Double.isNaN(fillValueDouble) && Double.compare(dval, fillValueDouble) == 0;
-                            if (!isMissing && fillAttr == null && Double.isNaN(dval)) isMissing = true;
-                            value = isMissing ? Float.NaN : (float) dval;
+                            boolean isMissing = false;
+                            if (!Double.isNaN(fillValueDouble)) {
+                                isMissing = Double.compare(dval, fillValueDouble) == 0;
+                            }
+                            if (!isMissing && Double.isNaN(dval)) isMissing = true;
+                            if (isMissing) {
+                                missingCellCount++;
+                                // Keep a real fill value when it survives the cast to float.
+                                // A stored NaN cannot be excluded by a JAI range (NaN != NaN).
+                                value = fillFitsInFloat ? fillValueFloat : Float.NaN;
+                            } else {
+                                value = (float) dval;
+                                if (Float.isNaN(validMin) || value < validMin) validMin = value;
+                                if (Float.isNaN(validMax) || value > validMax) validMax = value;
+                            }
                         } else {
                             float fval = dataArray.getFloat(index);
-                            boolean isMissing = !Float.isNaN(fillValueFloat) && Float.compare(fval, fillValueFloat) == 0;
-                            if (!isMissing && fillAttr == null && Float.isNaN(fval)) isMissing = true;
-                            value = isMissing ? Float.NaN : fval;
+                            boolean isMissing = false;
+                            if (fillFitsInFloat) {
+                                isMissing = Float.compare(fval, fillValueFloat) == 0;
+                            }
+                            if (!isMissing && Float.isNaN(fval)) isMissing = true;
+                            if (isMissing) {
+                                missingCellCount++;
+                                value = fillFitsInFloat ? fillValueFloat : Float.NaN;
+                            } else {
+                                value = fval;
+                                if (Float.isNaN(validMin) || value < validMin) validMin = value;
+                                if (Float.isNaN(validMax) || value > validMax) validMax = value;
+                            }
                         }
                         gridData[y][x] = value;
                     }
                 }
 
+                // JAI zonal statistics skip a Range, not GridSampleDimension metadata, and a
+                // NaN range never matches. When the file has no finite _FillValue, replace
+                // leftover NaNs with a sentinel strictly below the valid data and exclude that.
+                double noDataForStats = Double.NaN;
+                if (fillFitsInFloat) {
+                    noDataForStats = fillValueFloat;
+                } else if (!Float.isNaN(validMin) && !Float.isNaN(validMax)) {
+                    float span = Math.abs(validMax - validMin);
+                    float sentinel = validMin - (span + 100.0f);
+                    for (int yy = 0; yy < height2; yy++) {
+                        for (int xx = 0; xx < width2; xx++) {
+                            if (Float.isNaN(gridData[yy][xx])) gridData[yy][xx] = sentinel;
+                        }
+                    }
+                    noDataForStats = sentinel;
+                }
+                Range noDataRange = Double.isNaN(noDataForStats)
+                        ? null
+                        : RangeFactory.create(noDataForStats, true, noDataForStats, true);
+
+                int nanRemaining = 0;
+                for (int yy = 0; yy < height2; yy++) {
+                    for (int xx = 0; xx < width2; xx++) {
+                        if (Float.isNaN(gridData[yy][xx])) nanRemaining++;
+                    }
+                }
+                SFIToolkit.displayln("[NoData diagnostic] hasFill=" + hasFill
+                        + " fillValue=" + (Float.isNaN(fillValueFloat) ? "NaN" : Float.toString(fillValueFloat))
+                        + " missingCellsInRaster=" + missingCellCount
+                        + " nanRemainingAfterFix=" + nanRemaining
+                        + " validMin=" + validMin + " validMax=" + validMax
+                        + " noDataForStats=" + (Double.isNaN(noDataForStats) ? "NONE" : Double.toString(noDataForStats))
+                        + " noDataRange=" + (noDataRange == null ? "NULL (no masking!)" : "set"));
+                if (nanRemaining > 0 && noDataRange == null) {
+                    SFIToolkit.displayln("[NoData diagnostic] WARNING: raster still holds " + nanRemaining
+                            + " NaN cell(s) but no NoData range was set -> these will poison zone stats. "
+                            + "Define a _FillValue or ensure validMin/validMax are non-NaN.");
+                }
+
                 GridCoverageFactory factory = new GridCoverageFactory();
-                GridSampleDimension[] bands = new GridSampleDimension[]{new GridSampleDimension(varName)};
+                GridSampleDimension[] bands = new GridSampleDimension[]{sampleDimensionWithNoData(varName, noDataForStats, validMin, validMax)};
                 BufferedImage image = floatArrayToImage(gridData);
-                coverage = factory.create(varName, image, actualEnvelope, bands, null, null);
+                Map<String, Object> coverageProps = null;
+                if (noDataRange != null) {
+                    coverageProps = new HashMap<>();
+                    CoverageUtilities.setNoDataProperty(coverageProps, noDataRange);
+                }
+                coverage = factory.create(varName, image, actualEnvelope, bands, null, coverageProps);
 
                 CoordinateReferenceSystem rasterCRS = ncCRS;
                 CoordinateReferenceSystem vectorCRS = shapefileDataStore.getSchema().getCoordinateReferenceSystem();
@@ -1340,7 +1432,7 @@ public class ReadRasterAll {
                         bandsArr,
                         zoneFeatures,
                         null,
-                        null,
+                        noDataRange,
                         null,
                         false,
                         null,
@@ -1846,6 +1938,172 @@ public class ReadRasterAll {
         } catch (Exception e) {
             SFIToolkit.displayln("Warning: failed to align shapefile longitudes: " + e.getMessage());
             return fc;
+        }
+    }
+
+    /**
+     * Sample dimension that records the finite no-data value used by zonal statistics.
+     * A NaN entry is not used: JAI range tests do not match NaN, so callers substitute a sentinel.
+     */
+    private static GridSampleDimension sampleDimensionWithNoData(String name, double noData, float validMin, float validMax) {
+        if (Double.isNaN(noData) || Double.isInfinite(noData)) {
+            return new GridSampleDimension(name);
+        }
+        double min = Float.isNaN(validMin) ? noData - 1.0 : validMin;
+        double max = Float.isNaN(validMax) ? noData + 1.0 : validMax;
+        if (!(min < max)) {
+            min = Math.min(min, noData) - 1.0;
+            max = Math.max(max, noData) + 1.0;
+        }
+        try {
+            return new GridSampleDimension(
+                    name,
+                    (org.geotools.api.coverage.SampleDimensionType) null,
+                    (CharSequence[]) null,
+                    new double[] {noData},
+                    min,
+                    max,
+                    1.0,
+                    0.0,
+                    null);
+        } catch (RuntimeException ex) {
+            SFIToolkit.displayln("Warning: could not attach no-data " + noData + " to sample dimension: " + ex.getMessage());
+            return new GridSampleDimension(name);
+        }
+    }
+
+    /**
+     * Copy a coverage into one in-memory tile. Empty GeoTIFF tiles come back as null from
+     * {@link RenderedImage#getTile}, and {@code ZonalStatsOpImage.computeTile} throws when that happens.
+     * Pixels that belonged to a null tile are filled with the coverage no-data value (or NaN).
+     */
+    private static GridCoverage2D materializeNullSafeCoverage(GridCoverage2D coverage) {
+        RenderedImage src = coverage.getRenderedImage();
+        if (src == null) return coverage;
+        // A single in-memory tile never returns null from getTile. GeoTIFF reads are
+        // tiled ImageRead ops: ZonalStatsOpImage.computeTile calls getTile and NPEs
+        // ("tile is null") on empty or not-yet-realized tiles. Copy first.
+        if (src instanceof BufferedImage
+                && src.getMinX() == 0 && src.getMinY() == 0
+                && src.getNumXTiles() == 1 && src.getNumYTiles() == 1) {
+            return coverage;
+        }
+        double fill = Double.NaN;
+        try {
+            double[] nodata = coverage.getSampleDimension(0).getNoDataValues();
+            if (nodata != null && nodata.length > 0) fill = nodata[0];
+        } catch (RuntimeException ignore) {
+            fill = Double.NaN;
+        }
+        int[] nullTiles = new int[1];
+        BufferedImage image = rasterWithoutNullTiles(src, fill, nullTiles);
+        if (nullTiles[0] > 0) {
+            SFIToolkit.displayln("GeoTIFF returned " + nullTiles[0]
+                    + " empty tile(s); materialized an in-memory raster so zonal statistics can run");
+        }
+        Map<String, Object> props = new HashMap<>();
+        String[] names = coverage.getPropertyNames();
+        if (names != null) {
+            for (String propertyName : names) {
+                Object value = coverage.getProperty(propertyName);
+                if (value != null && value != java.awt.Image.UndefinedProperty) {
+                    props.put(propertyName, value);
+                }
+            }
+        }
+        MathTransform gridToCrs = coverage.getGridGeometry().getGridToCRS2D();
+        if (src.getMinX() != 0 || src.getMinY() != 0) {
+            MathTransform shift = ProjectiveTransform.create(
+                    AffineTransform.getTranslateInstance(src.getMinX(), src.getMinY()));
+            gridToCrs = ConcatenatedTransform.create(shift, gridToCrs);
+        }
+        return new GridCoverageFactory().create(
+                coverage.getName().toString(),
+                image,
+                coverage.getCoordinateReferenceSystem(),
+                gridToCrs,
+                coverage.getSampleDimensions(),
+                null,
+                props.isEmpty() ? null : props);
+    }
+
+    static BufferedImage rasterWithoutNullTiles(RenderedImage src, double fillValue) {
+        return rasterWithoutNullTiles(src, fillValue, null);
+    }
+
+    static BufferedImage rasterWithoutNullTiles(RenderedImage src, double fillValue, int[] nullTileCount) {
+        int width = src.getWidth();
+        int height = src.getHeight();
+        SampleModel sm = src.getSampleModel().createCompatibleSampleModel(width, height);
+        WritableRaster dest = Raster.createWritableRaster(sm, new Point(0, 0));
+        fillRaster(dest, fillValue);
+        int minX = src.getMinX();
+        int minY = src.getMinY();
+        int minTX = src.getMinTileX();
+        int minTY = src.getMinTileY();
+        for (int ty = 0; ty < src.getNumYTiles(); ty++) {
+            for (int tx = 0; tx < src.getNumXTiles(); tx++) {
+                Raster tile = readTileOrNull(src, minTX + tx, minTY + ty);
+                if (tile == null) {
+                    if (nullTileCount != null) nullTileCount[0]++;
+                    continue;
+                }
+                dest.setRect(-minX, -minY, tile);
+            }
+        }
+        ColorModel cm = src.getColorModel();
+        if (cm != null && cm.isCompatibleRaster(dest)) {
+            return new BufferedImage(cm, dest, cm.isAlphaPremultiplied(), null);
+        }
+        int dataType = sm.getDataType();
+        int bands = sm.getNumBands();
+        ColorSpace cs = ColorSpace.getInstance(bands == 1 ? ColorSpace.CS_GRAY : ColorSpace.CS_sRGB);
+        int[] bits = new int[bands];
+        Arrays.fill(bits, DataBuffer.getDataTypeSize(dataType));
+        ColorModel fallback = new ComponentColorModel(cs, bits, false, false, Transparency.OPAQUE, dataType);
+        if (!fallback.isCompatibleRaster(dest)) {
+            throw new IllegalArgumentException("Cannot build an in-memory image for data type " + dataType + " with " + bands + " bands");
+        }
+        return new BufferedImage(fallback, dest, false, null);
+    }
+
+    private static Raster readTileOrNull(RenderedImage src, int tileX, int tileY) {
+        try {
+            return src.getTile(tileX, tileY);
+        } catch (NullPointerException ex) {
+            return null;
+        }
+    }
+
+    private static void fillRaster(WritableRaster raster, double fillValue) {
+        DataBuffer db = raster.getDataBuffer();
+        int type = db.getDataType();
+        if (Double.isNaN(fillValue) && type != DataBuffer.TYPE_FLOAT && type != DataBuffer.TYPE_DOUBLE) {
+            fillValue = 0.0;
+        }
+        for (int bank = 0; bank < db.getNumBanks(); bank++) {
+            switch (type) {
+                case DataBuffer.TYPE_BYTE:
+                    Arrays.fill(((DataBufferByte) db).getData(bank), (byte) fillValue);
+                    break;
+                case DataBuffer.TYPE_USHORT:
+                    Arrays.fill(((DataBufferUShort) db).getData(bank), (short) fillValue);
+                    break;
+                case DataBuffer.TYPE_SHORT:
+                    Arrays.fill(((DataBufferShort) db).getData(bank), (short) fillValue);
+                    break;
+                case DataBuffer.TYPE_INT:
+                    Arrays.fill(((DataBufferInt) db).getData(bank), (int) fillValue);
+                    break;
+                case DataBuffer.TYPE_FLOAT:
+                    Arrays.fill(((DataBufferFloat) db).getData(bank), (float) fillValue);
+                    break;
+                case DataBuffer.TYPE_DOUBLE:
+                    Arrays.fill(((DataBufferDouble) db).getData(bank), fillValue);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }
