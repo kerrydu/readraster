@@ -204,6 +204,16 @@ for %%J in ("%JARDIR%\gt-*.jar") do (
 )
 endlocal
 
+REM 4h) Rebuild every META-INF/services file and both JAI registries.
+REM     `jar xf` keeps only the last copy of a duplicated path, which drops
+REM     ThreadedHsqlEpsgFactory and ImageRead/ZonalStats registrations.
+echo STAGE: merge all META-INF/services and JAI registry files
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0merge-metainf.ps1" -Staging "%STAGING%" -JarDir "%JARDIR%"
+if errorlevel 1 (
+  echo ERROR: META-INF merge failed
+  exit /b 6
+)
+
 REM 5) Remove signature files that can break merged jars
 if exist "%STAGING%\META-INF" (
   del /f /q "%STAGING%\META-INF\*.SF" >nul 2>&1
